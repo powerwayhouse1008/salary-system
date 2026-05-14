@@ -22,15 +22,14 @@ export async function saveEmployee(formData: FormData) {
   const id = textValue(formData.get("id"));
   const rawPassword = textValue(formData.get("password"));
   const password = rawPassword?.trim() || null;
+  const rawPassword = textValue(formData.get("password"));
+  const password = rawPassword?.trim() || null;
   const payload = {
     name: textValue(formData.get("name")) ?? "",
     email: (textValue(formData.get("email")) ?? "").toLowerCase(),
-    phone: textValue(formData.get("phone")),
     role: textValue(formData.get("role")) ?? "staff",
     brokerage_commission_rate: numberValue(formData.get("brokerage_commission_rate")),
-    ad_commission_rate: numberValue(formData.get("ad_commission_rate")),
-    is_active: formData.get("is_active") === "on",
-    updated_at: new Date().toISOString()
+    ad_commission_rate: numberValue(formData.get("ad_commission_rate"))
   };
   const payloadWithPassword = {
     ...payload,
