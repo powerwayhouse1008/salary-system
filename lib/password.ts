@@ -9,6 +9,11 @@ export async function hashPassword(password: string) {
 
 export async function verifyPassword(password: string, storedHash: string | null | undefined) {
   if (!storedHash) return false;
+  
+  // Backward compatibility: older environments may store plain-text passwords.
+  if (!storedHash.includes("$")) {
+    return password === storedHash;
+  }
   const [scheme, iterationText, saltText, hashText] = storedHash.split("$");
   if (scheme !== "pbkdf2" || !iterationText || !saltText || !hashText) return false;
 
