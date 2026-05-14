@@ -2,7 +2,7 @@ import { evaluateFormula, defaultFormulaContext } from "@/lib/formula";
 import type { Contract, Profile, SalaryFormula, SalaryMonthly } from "@/lib/types";
 
 export const defaultFormula: Record<"formula_total" | "formula_deduction" | "formula_transfer" | "formula_remaining", string> = {
-  formula_total: "仲介売上合計 * 仲介歩合率 + AD売上合計 * AD歩合率 + 前月残り金額",
+  formula_total: "売買売上合計 * 売買歩合率 + 賃貸売上合計 * 賃貸歩合率 + 前月残り金額",
   formula_deduction: "社会保険 + 年金料 + 雇用保険料 + 所得税 + 定期券 + 成約交通費 + IT + 物件管理費用 + 経費領収書 + その他控除",
   formula_transfer: "合計 - 控除合計 + その他支給",
   formula_remaining: "合計 - 控除合計 + その他支給 - 実際振込金額"
@@ -28,10 +28,10 @@ export function calculateSalary(
 
   const context = {
     ...defaultFormulaContext(),
-    仲介売上合計: brokerageSalesTotal,
-    AD売上合計: adSalesTotal,
-    仲介歩合率: brokerageRate,
-    AD歩合率: adRate,
+    売買売上合計: brokerageSalesTotal,
+    賃貸売上合計: adSalesTotal,
+    売買歩合率: brokerageRate,
+    賃貸歩合率: adRate,
     前月残り金額: Number(draft.previous_remaining_amount ?? 0),
     社会保険: Number(draft.social_insurance ?? 0),
     年金料: Number(draft.pension ?? 0),
