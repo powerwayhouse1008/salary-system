@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
-import { hashPassword, verifyPassword } from "@/lib/password";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { Role } from "@/lib/types";
 
@@ -29,13 +28,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       name: "ID・パスワード",
       credentials: {
         login: { label: "ログインID", type: "text" },
-        password: { label: "パスワード", type: "password" }
+        
       },
       async authorize(credentials) {
         try {
           const login = String(credentials?.login ?? "").trim().toLowerCase();
-          const password = String(credentials?.password ?? "");
-          if (!login || !password) return null;
+           if (!login) return null;
 
           const supabase = getSupabaseAdmin();
           const adminAliases = [localAdminEmail, "admin", "admin@admin.com"];
@@ -50,7 +48,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .order("created_at", { ascending: true });
             profile =
               adminProfiles?.find((candidate) => candidate.email === localAdminEmail) ??
-               adminProfiles?.find((candidate) => adminAliases.includes((candidate.email ?? "").toLowerCase())) ??
+              adminProfiles?.find((candidate) => adminAliases.includes((candidate.email ?? "").toLowerCase())) ??
               adminProfiles?.find((candidate) => candidate.is_active !== false) ??
               adminProfiles?.[0] ??
               null;
@@ -58,7 +56,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             const result = await supabase.from("profiles").select("*").eq("email", email).maybeSingle();
             profile = result.data;
           }
-
 
           if (login === "admin" && !profile) {
             const { data: authUser, error } = await supabase.auth.admin.createUser({
@@ -68,14 +65,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             });
             if (error || !authUser.user) return null;
 
-            const passwordHash = await hashPassword("admin123");
             const { data: created } = await supabase
               .from("profiles")
               .insert({
                 id: authUser.user.id,
                 name: "Admin",
                 email,
-                password_hash: passwordHash,
                 role: "admin",
                 is_active: true,
                 last_login_at: new Date().toISOString()
@@ -85,33 +80,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             profile = created;
           }
 
-          if (login === "admin" && profile && !profile.password_hash) {
-            const passwordHash = await hashPassword("admin123");
-            await supabase.from("profiles").update({ password_hash: passwordHash }).eq("id", profile.id);
-            profile.password_hash = passwordHash;
-          }
+          
 
           if (!profile || profile.is_active === false) return null;
-           let passwordOk = await verifyPassword(password, profile.password_hash);
-
-          // Keep the documented bootstrap credential working for admin recovery.
-          if (!passwordOk && login === "admin" && password === "admin123" && profile.role === "admin") {
-            const passwordHash = await hashPassword("admin123");
-            await supabase.from("profiles").update({ password_hash: passwordHash }).eq("id", profile.id);
-            profile.password_hash = passwordHash;
-            passwordOk = true;
-          }
-
-          if (!passwordOk) return null;
-
-           const shouldUpgradePassword = Boolean(profile.password_hash && !profile.password_hash.includes("$"));
-          const nextPasswordHash = shouldUpgradePassword ? await hashPassword(password) : profile.password_hash;
+           
 
           await supabase
             .from("profiles")
             .update({
-              last_login_at: new Date().toISOString(),
-              ...(shouldUpgradePassword ? { password_hash: nextPasswordHash } : {})
+             last_login_at: new Date().toISOString()
             })
             .eq("id", profile.id);
 
