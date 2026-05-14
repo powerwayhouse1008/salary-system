@@ -46,10 +46,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             const { data: adminProfiles } = await supabase
               .from("profiles")
               .select("*")
-              .in("email", adminAliases);
+              .eq("role", "admin")
+              .order("created_at", { ascending: true });
             profile =
               adminProfiles?.find((candidate) => candidate.email === localAdminEmail) ??
-              adminProfiles?.find((candidate) => candidate.role === "admin") ??
+               adminProfiles?.find((candidate) => adminAliases.includes((candidate.email ?? "").toLowerCase())) ??
+              adminProfiles?.find((candidate) => candidate.is_active !== false) ??
               adminProfiles?.[0] ??
               null;
           } else {
