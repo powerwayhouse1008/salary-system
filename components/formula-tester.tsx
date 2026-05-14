@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { evaluateFormula, defaultFormulaContext } from "@/lib/formula";
 
 export function FormulaTester({ expressions }: { expressions: string[] }) {
-  const [sample, setSample] = useState("仲介売上合計=200000\nAD売上合計=100000\n仲介歩合率=0.3\nAD歩合率=0.5\n前月残り金額=0");
+  const [sample, setSample] = useState("売買売上合計=200000\n賃貸売上合計=100000\n売買歩合率=0.3\n賃貸歩合率=0.5\n前月残り金額=0");
   const result = useMemo(() => {
     try {
       const context = { ...defaultFormulaContext() };
