@@ -68,8 +68,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
               <tbody>
                 <tr><th>売買売上合計</th><td>{yen.format(salary?.brokerage_sales_total ?? 0)}</td></tr>
                 <tr><th>賃貸売上合計</th><td>{yen.format(salary?.ad_sales_total ?? 0)}</td></tr>
-                <tr><th>仲介歩合</th><td>{yen.format(salary?.brokerage_commission ?? 0)}</td></tr>
-                <tr><th>AD歩合</th><td>{yen.format(salary?.ad_commission ?? 0)}</td></tr>
+                <tr><th>売買歩合</th><td>{yen.format(salary?.brokerage_commission ?? 0)}</td></tr>
+                <tr><th>賃貸歩合</th><td>{yen.format(salary?.ad_commission ?? 0)}</td></tr>
                 <tr><th>合計</th><td>{yen.format(salary?.total_amount ?? 0)}</td></tr>
                 <tr><th>振り込み金額</th><td className="font-bold">{yen.format(salary?.transfer_amount ?? 0)}</td></tr>
                 <tr><th>残り金額</th><td>{yen.format(salary?.remaining_amount ?? 0)}</td></tr>
