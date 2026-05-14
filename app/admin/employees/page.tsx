@@ -59,8 +59,8 @@ export default async function EmployeesPage() {
               <th>新パスワード</th>
               <th>電話</th>
               <th>権限</th>
-              <th>仲介歩合</th>
-              <th>AD歩合</th>
+              <th>売買歩合</th>
+              <th>賃貸歩合</th>
               <th>状態</th>
               <th></th>
             </tr>
