@@ -12,7 +12,11 @@ const allowedDomains = (process.env.ALLOWED_EMAIL_DOMAINS ?? "")
 const autoCreateProfile = process.env.AUTO_CREATE_PROFILE !== "false";
 const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL?.toLowerCase();
 const localAdminEmail = process.env.LOCAL_ADMIN_EMAIL?.toLowerCase() ?? "admin@local.internal";
-
+const hasMicrosoftEntraConfig = Boolean(
+  process.env.AUTH_MICROSOFT_ENTRA_ID_ID &&
+    process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET &&
+    process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER
+);
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   session: {
@@ -105,11 +109,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       }
     }),
-    MicrosoftEntraID({
-      clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
-      clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
-      issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER
-    })
+    ...(hasMicrosoftEntraConfig
+      ? [
+          MicrosoftEntraID({
+            clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
+            clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
+            issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER
+          })
+        ]
+      : [])
   ],
   callbacks: {
     async signIn({ profile, account }) {
