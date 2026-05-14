@@ -22,8 +22,6 @@ export async function saveEmployee(formData: FormData) {
   const id = textValue(formData.get("id"));
   const rawPassword = textValue(formData.get("password"));
   const password = rawPassword?.trim() || null;
-  const rawPassword = textValue(formData.get("password"));
-  const password = rawPassword?.trim() || null;
   const payload = {
     name: textValue(formData.get("name")) ?? "",
     email: (textValue(formData.get("email")) ?? "").toLowerCase(),
