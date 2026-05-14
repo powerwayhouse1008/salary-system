@@ -38,8 +38,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!login || !password) return null;
 
           const supabase = getSupabaseAdmin();
+          const adminAliases = [localAdminEmail, "admin", "admin@admin.com"];
           const email = login === "admin" ? localAdminEmail : login;
-          let { data: profile } = await supabase.from("profiles").select("*").eq("email", email).maybeSingle();
+          let profile = null;
+
+          if (login === "admin") {
+            const { data: adminProfiles } = await supabase
+              .from("profiles")
+              .select("*")
+              .in("email", adminAliases);
+            profile =
+              adminProfiles?.find((candidate) => candidate.email === localAdminEmail) ??
+              adminProfiles?.find((candidate) => candidate.role === "admin") ??
+              adminProfiles?.[0] ??
+              null;
+          } else {
+            const result = await supabase.from("profiles").select("*").eq("email", email).maybeSingle();
+            profile = result.data;
+          }
+
 
           if (login === "admin" && !profile) {
             const { data: authUser, error } = await supabase.auth.admin.createUser({
