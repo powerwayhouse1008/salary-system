@@ -18,8 +18,8 @@ export default async function AdminContractsPage() {
         <label className="field">契約名前<input name="customer_name" /></label>
         <label className="field">担当<select name="staff_id">{profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
         <label className="field">物件名<input name="property_name" /></label>
-        <label className="field">仲介売上<input name="brokerage_sales" type="number" /></label>
-        <label className="field">AD売上<input name="ad_sales" type="number" /></label>
+         <label className="field">売買売上<input name="brokerage_sales" type="number" /></label>
+        <label className="field">賃貸売上<input name="ad_sales" type="number" /></label>
         <label className="field">予定入金額<input name="expected_payment_amount" type="number" /></label>
         <label className="field">実入金額<input name="actual_received_amount" type="number" /></label>
         <div className="pt-6"><button className="btn btn-primary" type="submit">追加</button></div>
@@ -27,7 +27,7 @@ export default async function AdminContractsPage() {
       <div className="table-wrap">
         <table className="data-table">
           <thead>
-            <tr><th>契約日</th><th>番号</th><th>契約名前</th><th>担当</th><th>物件</th><th>仲介売上</th><th>AD売上</th><th>予定</th><th>実入金</th><th>状態</th><th>入金確認</th></tr>
+           <tr><th>契約日</th><th>番号</th><th>契約名前</th><th>担当</th><th>物件</th><th>売買売上</th><th>賃貸売上</th><th>予定</th><th>実入金</th><th>状態</th><th>入金確認</th></tr>
           </thead>
           <tbody>
             {contracts.map((contract) => (
