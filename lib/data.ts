@@ -27,7 +27,7 @@ export async function getFormulas() {
 }
 
 export async function getSalaries(options: { staffId?: string; targetMonth?: string } = {}) {
-  let query = getSupabaseAdmin().from("salary_monthly").select("*, profiles(name,email)").order("target_month", { ascending: false });
+   let query = getSupabaseAdmin().from("salary_monthly").select("*, profiles(name,email)").order("target_month", { ascending: false });
   if (options.staffId) query = query.eq("staff_id", options.staffId);
   if (options.targetMonth) query = query.eq("target_month", options.targetMonth);
   const { data, error } = await query;
