@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { numberValue, textValue } from "@/lib/format";
 import { calculateSalary, defaultFormula } from "@/lib/payroll";
+import { hashPassword } from "@/lib/password";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { PaymentStatus } from "@/lib/types";
 
@@ -19,6 +20,8 @@ export async function saveEmployee(formData: FormData) {
   await requireUser("admin");
   const supabase = getSupabaseAdmin();
   const id = textValue(formData.get("id"));
+  const rawPassword = textValue(formData.get("password"));
+  const password = rawPassword?.trim() || null;
   const payload = {
     name: textValue(formData.get("name")) ?? "",
     email: (textValue(formData.get("email")) ?? "").toLowerCase(),
@@ -29,13 +32,17 @@ export async function saveEmployee(formData: FormData) {
     is_active: formData.get("is_active") === "on",
     updated_at: new Date().toISOString()
   };
-  const payloadWithPassword = payload;
+  const payloadWithPassword = {
+    ...payload,
+    ...(password ? { password_hash: await hashPassword(password) } : {})
+  };
 
   if (id) {
     await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
   } else {
     const { data: authUser, error } = await supabase.auth.admin.createUser({
       email: payload.email,
+      password: password ?? crypto.randomUUID(),
       email_confirm: true,
       user_metadata: { name: payload.name }
     });
