@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { numberValue, textValue } from "@/lib/format";
-import { hashPassword } from "@/lib/password";
 import { calculateSalary, defaultFormula } from "@/lib/payroll";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { PaymentStatus } from "@/lib/types";
@@ -30,13 +29,7 @@ export async function saveEmployee(formData: FormData) {
     is_active: formData.get("is_active") === "on",
     updated_at: new Date().toISOString()
   };
-  const password = textValue(formData.get("password"));
-  const payloadWithPassword = password
-    ? {
-        ...payload,
-        password_hash: await hashPassword(password)
-      }
-    : payload;
+  const payloadWithPassword = payload;
 
   if (id) {
     await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
