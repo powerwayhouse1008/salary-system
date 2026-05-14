@@ -8,16 +8,28 @@ export async function getProfiles() {
 }
 
 export async function getContracts(options: { staffId?: string; limit?: number } = {}) {
-  let query = getSupabaseAdmin()
+  let queryWithProfiles = getSupabaseAdmin()
     .from("contracts")
     .select("*, profiles(name,email)")
     .order("contract_date", { ascending: false })
     .order("created_at", { ascending: false });
-  if (options.staffId) query = query.eq("staff_id", options.staffId);
-  if (options.limit) query = query.limit(options.limit);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as Contract[];
+  if (options.staffId) queryWithProfiles = queryWithProfiles.eq("staff_id", options.staffId);
+  if (options.limit) queryWithProfiles = queryWithProfiles.limit(options.limit);
+
+  const withProfiles = await queryWithProfiles;
+  if (!withProfiles.error) return (withProfiles.data ?? []) as Contract[];
+
+  let fallbackQuery = getSupabaseAdmin()
+    .from("contracts")
+    .select("*")
+    .order("contract_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (options.staffId) fallbackQuery = fallbackQuery.eq("staff_id", options.staffId);
+  if (options.limit) fallbackQuery = fallbackQuery.limit(options.limit);
+
+  const fallback = await fallbackQuery;
+  if (fallback.error) throw fallback.error;
+  return (fallback.data ?? []) as Contract[];
 }
 
 export async function getFormulas() {
@@ -27,12 +39,20 @@ export async function getFormulas() {
 }
 
 export async function getSalaries(options: { staffId?: string; targetMonth?: string } = {}) {
-  let query = getSupabaseAdmin().from("salary_monthly").select("*, profiles(name,email)").order("target_month", { ascending: false });
-  if (options.staffId) query = query.eq("staff_id", options.staffId);
-  if (options.targetMonth) query = query.eq("target_month", options.targetMonth);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as SalaryMonthly[];
+  let queryWithProfiles = getSupabaseAdmin().from("salary_monthly").select("*, profiles(name,email)").order("target_month", { ascending: false });
+  if (options.staffId) queryWithProfiles = queryWithProfiles.eq("staff_id", options.staffId);
+  if (options.targetMonth) queryWithProfiles = queryWithProfiles.eq("target_month", options.targetMonth);
+
+  const withProfiles = await queryWithProfiles;
+  if (!withProfiles.error) return (withProfiles.data ?? []) as SalaryMonthly[];
+
+  let fallbackQuery = getSupabaseAdmin().from("salary_monthly").select("*").order("target_month", { ascending: false });
+  if (options.staffId) fallbackQuery = fallbackQuery.eq("staff_id", options.staffId);
+  if (options.targetMonth) fallbackQuery = fallbackQuery.eq("target_month", options.targetMonth);
+
+  const fallback = await fallbackQuery;
+  if (fallback.error) throw fallback.error;
+  return (fallback.data ?? []) as SalaryMonthly[];
 }
 
 export async function getDashboardStats(targetMonth: string) {
