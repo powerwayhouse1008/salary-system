@@ -32,11 +32,11 @@ export default async function EmployeesPage() {
           </select>
         </label>
         <label className="field">
-          仲介歩合率 %
+          売買歩合率 %
           <input name="brokerage_commission_rate" type="number" step="0.01" defaultValue="30" />
         </label>
         <label className="field">
-          AD歩合率 %
+         賃貸歩合率 %
           <input name="ad_commission_rate" type="number" step="0.01" defaultValue="50" />
         </label>
         <label className="flex items-center gap-2 pt-6 text-sm font-semibold">
