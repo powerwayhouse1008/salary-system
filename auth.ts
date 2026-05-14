@@ -17,8 +17,15 @@ const hasMicrosoftEntraConfig = Boolean(
     process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET &&
     process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER
 );
+const authSecret =
+  process.env.AUTH_SECRET ??
+  process.env.NEXTAUTH_SECRET ??
+  process.env.SUPABASE_SERVICE_ROLE_KEY ??
+  "local-dev-auth-secret";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
+  secret: authSecret,
   session: {
     strategy: "jwt",
     maxAge: 60 * 60 * 24 * 30
