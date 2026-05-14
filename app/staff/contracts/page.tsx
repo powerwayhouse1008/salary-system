@@ -23,8 +23,8 @@ export default async function StaffContractsPage() {
         <label className="field">銀行入金<input name="bank_deposit" type="number" /></label>
         <label className="field">出金<input name="withdrawal" type="number" /></label>
         <label className="field">振込手数料<input name="transfer_fee" type="number" /></label>
-        <label className="field">仲介売上<input name="brokerage_sales" type="number" /></label>
-        <label className="field">AD売上<input name="ad_sales" type="number" /></label>
+        <label className="field">売買売上<input name="brokerage_sales" type="number" /></label>
+        <label className="field">賃貸売上<input name="ad_sales" type="number" /></label>
         <label className="field">AD入金<input name="ad_payment" type="number" /></label>
         <label className="field">選考(返金等）<input name="refund_or_adjustment" type="number" /></label>
         <label className="field">契約種類<input name="contract_type" /></label>
@@ -37,7 +37,7 @@ export default async function StaffContractsPage() {
       </form>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>契約日付</th><th>契約番号</th><th>契約名前</th><th>物件名</th><th>仲介売上</th><th>AD売上</th><th>状態</th></tr></thead>
+          <thead><tr><th>契約日付</th><th>契約番号</th><th>契約名前</th><th>物件名</th><th>売買売上</th><th>賃貸売上</th><th>状態</th></tr></thead>
           <tbody>
             {contracts.map((contract) => (
               <tr key={contract.id}>
