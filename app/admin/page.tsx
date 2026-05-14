@@ -18,8 +18,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         </form>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="仲介売上" value={yen.format(stats.brokerageSales)} />
-        <StatCard label="AD売上" value={yen.format(stats.adSales)} />
+        <StatCard label="売買売上" value={yen.format(stats.brokerageSales)} />
+        <StatCard label="賃貸売上" value={yen.format(stats.adSales)} />
         <StatCard label="入金済み" value={yen.format(stats.received)} tone="ok" />
         <StatCard label="未入金" value={yen.format(stats.pending)} tone="warn" />
         <StatCard label="給与支払予定" value={yen.format(stats.payroll)} />
