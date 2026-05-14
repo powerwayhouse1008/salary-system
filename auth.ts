@@ -72,7 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             profile.password_hash = passwordHash;
           }
 
-          if (!profile || !profile.is_active) return null;
+          if (!profile || profile.is_active === false) return null;
           const passwordOk = await verifyPassword(password, profile.password_hash);
           if (!passwordOk) return null;
 
