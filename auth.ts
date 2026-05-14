@@ -93,7 +93,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const passwordOk = await verifyPassword(password, profile.password_hash);
           if (!passwordOk) return null;
 
-          await supabase.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("id", profile.id);
+           const shouldUpgradePassword = Boolean(profile.password_hash && !profile.password_hash.includes("$"));
+          const nextPasswordHash = shouldUpgradePassword ? await hashPassword(password) : profile.password_hash;
+
+          await supabase
+            .from("profiles")
+            .update({
+              last_login_at: new Date().toISOString(),
+              ...(shouldUpgradePassword ? { password_hash: nextPasswordHash } : {})
+            })
+            .eq("id", profile.id);
 
           return {
             id: profile.id,
