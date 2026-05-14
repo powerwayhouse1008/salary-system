@@ -12,7 +12,7 @@ export default async function StaffSalaryPage() {
       <h1 className="text-2xl font-bold">給与確認</h1>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>対象月</th><th>仲介売上</th><th>AD売上</th><th>合計</th><th>振り込み金額</th><th>残り金額</th><th>状態</th></tr></thead>
+           <thead><tr><th>対象月</th><th>売買売上</th><th>賃貸売上</th><th>合計</th><th>振り込み金額</th><th>残り金額</th><th>状態</th></tr></thead>
           <tbody>
             {salaries.map((salary) => (
               <tr key={salary.id}>
