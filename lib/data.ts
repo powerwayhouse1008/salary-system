@@ -8,16 +8,13 @@ export async function getProfiles() {
 }
 
 export async function getContracts(options: { staffId?: string; limit?: number } = {}) {
-  let query = getSupabaseAdmin()
-    .from("contracts")
-    .select("*, profiles:profiles!contracts_staff_id_fkey(name,email)")
-    .order("contract_date", { ascending: false })
-    .order("created_at", { ascending: false });
+ let query = getSupabaseAdmin().from("contracts").select("*").order("contract_date", { ascending: false }).order("created_at", { ascending: false });
   if (options.staffId) query = query.eq("staff_id", options.staffId);
   if (options.limit) query = query.limit(options.limit);
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as Contract[];
+   const rows = (data ?? []) as Contract[];
+  return await withProfiles(rows, (row) => row.staff_id);
 }
 
 export async function getFormulas() {
@@ -27,12 +24,13 @@ export async function getFormulas() {
 }
 
 export async function getSalaries(options: { staffId?: string; targetMonth?: string } = {}) {
-  let query = getSupabaseAdmin().from("salary_monthly").select("*, profiles:profiles!salary_monthly_staff_id_fkey(name,email)").order("target_month", { ascending: false });
+  let query = getSupabaseAdmin().from("salary_monthly").select("*").order("target_month", { ascending: false });
   if (options.staffId) query = query.eq("staff_id", options.staffId);
   if (options.targetMonth) query = query.eq("target_month", options.targetMonth);
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as SalaryMonthly[];
+   const rows = (data ?? []) as SalaryMonthly[];
+  return await withProfiles(rows, (row) => row.staff_id);
 }
 
 export async function getDashboardStats(targetMonth: string) {
@@ -75,7 +73,14 @@ export async function getDashboardStats(targetMonth: string) {
     )
   };
 }
-
+async function withProfiles<T extends { profiles?: Pick<Profile, "name" | "email"> | null }>(rows: T[], getStaffId: (row: T) => string) {
+  const ids = Array.from(new Set(rows.map(getStaffId).filter(Boolean)));
+  if (ids.length === 0) return rows;
+  const { data: profiles, error } = await getSupabaseAdmin().from("profiles").select("id,name,email").in("id", ids);
+  if (error) throw error;
+  const map = new Map((profiles ?? []).map((profile) => [profile.id as string, { name: profile.name as string, email: profile.email as string }]));
+  return rows.map((row) => ({ ...row, profiles: map.get(getStaffId(row)) ?? null }));
+}
 function sum(values: number[]) {
   return Math.round(values.reduce((total, value) => total + Number(value ?? 0), 0));
 }
