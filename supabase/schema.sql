@@ -144,3 +144,16 @@ values (
   true
 )
 on conflict do nothing;
+
+-- Backward-compatible migrations for existing projects
+alter table contracts add column if not exists payment_confirmed_by uuid;
+alter table contracts add column if not exists payment_note text;
+alter table contracts add column if not exists payment_confirmed_at timestamptz;
+alter table salary_monthly add column if not exists confirmed_by uuid;
+alter table salary_monthly add column if not exists confirmed_at timestamptz;
+
+alter table contracts drop constraint if exists contracts_payment_confirmed_by_fkey;
+alter table contracts add constraint contracts_payment_confirmed_by_fkey foreign key (payment_confirmed_by) references profiles(id);
+
+alter table salary_monthly drop constraint if exists salary_monthly_confirmed_by_fkey;
+alter table salary_monthly add constraint salary_monthly_confirmed_by_fkey foreign key (confirmed_by) references profiles(id);
