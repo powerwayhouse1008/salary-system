@@ -10,7 +10,7 @@ export async function getProfiles() {
 export async function getContracts(options: { staffId?: string; limit?: number } = {}) {
   let query = getSupabaseAdmin()
     .from("contracts")
-     .select("*, profiles:profiles!contracts_staff_id_fkey(name,email)")
+    .select("*, profiles:profiles(name,email)")
     .order("contract_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (options.staffId) query = query.eq("staff_id", options.staffId);
@@ -27,7 +27,7 @@ export async function getFormulas() {
 }
 
 export async function getSalaries(options: { staffId?: string; targetMonth?: string } = {}) {
-  let query = getSupabaseAdmin().from("salary_monthly").select("*, profiles:profiles!salary_monthly_staff_id_fkey(name,email)").order("target_month", { ascending: false });
+  let query = getSupabaseAdmin().from("salary_monthly").select("*, profiles:profiles(name,email)").order("target_month", { ascending: false });
   if (options.staffId) query = query.eq("staff_id", options.staffId);
   if (options.targetMonth) query = query.eq("target_month", options.targetMonth);
   const { data, error } = await query;
