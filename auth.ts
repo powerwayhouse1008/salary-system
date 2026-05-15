@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
-import { getSupabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin, hasSupabaseAdminEnv } from "@/lib/supabase";
 import type { Role } from "@/lib/types";
 
 const allowedDomains = (process.env.ALLOWED_EMAIL_DOMAINS ?? "")
@@ -44,7 +44,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         try {
           const login = String(credentials?.login ?? "").trim().toLowerCase();
-           if (!login) return null;
+           if (!login || !hasSupabaseAdminEnv()) return null;
 
           const supabase = getSupabaseAdmin();
           const adminAliases = [localAdminEmail, "admin", "admin@admin.com"];
@@ -134,7 +134,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!email || !profile) return false;
       const domain = email.split("@").at(1);
       if (allowedDomains.length && (!domain || !allowedDomains.includes(domain))) return false;
-
+      if (!hasSupabaseAdminEnv()) return "/login?error=ServerConfig";
       const supabase = getSupabaseAdmin();
       const { data: existing } = await supabase.from("profiles").select("*").eq("email", email).maybeSingle();
 
@@ -188,7 +188,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       const email = (token.email ?? profile?.email)?.toLowerCase();
       if (!email) return token;
-
+     if (!hasSupabaseAdminEnv()) return token;
       try {
         const supabase = getSupabaseAdmin();
         const { data } = await supabase.from("profiles").select("id, role, is_active, name").eq("email", email).maybeSingle();
