@@ -26,8 +26,10 @@ export async function saveEmployee(formData: FormData) {
     name: textValue(formData.get("name")) ?? "",
     email: (textValue(formData.get("email")) ?? "").toLowerCase(),
     role: textValue(formData.get("role")) ?? "staff",
+    phone: textValue(formData.get("phone")),
     brokerage_commission_rate: numberValue(formData.get("brokerage_commission_rate")),
-    ad_commission_rate: numberValue(formData.get("ad_commission_rate"))
+     ad_commission_rate: numberValue(formData.get("ad_commission_rate")),
+    is_active: formData.get("is_active") === "on"
   };
   const payloadWithPassword = {
     ...payload,
