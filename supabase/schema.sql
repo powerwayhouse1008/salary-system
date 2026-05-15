@@ -157,3 +157,19 @@ alter table contracts add constraint contracts_payment_confirmed_by_fkey foreign
 
 alter table salary_monthly drop constraint if exists salary_monthly_confirmed_by_fkey;
 alter table salary_monthly add constraint salary_monthly_confirmed_by_fkey foreign key (confirmed_by) references profiles(id);
+
+-- Ensure salary_monthly columns used by application exist on older projects
+alter table salary_monthly add column if not exists social_insurance numeric default 0;
+alter table salary_monthly add column if not exists pension numeric default 0;
+alter table salary_monthly add column if not exists employment_insurance numeric default 0;
+alter table salary_monthly add column if not exists income_tax numeric default 0;
+alter table salary_monthly add column if not exists commuter_pass numeric default 0;
+alter table salary_monthly add column if not exists contract_transportation numeric default 0;
+alter table salary_monthly add column if not exists it_cost numeric default 0;
+alter table salary_monthly add column if not exists property_management_cost numeric default 0;
+alter table salary_monthly add column if not exists previous_remaining_amount numeric default 0;
+alter table salary_monthly add column if not exists expense_receipts numeric default 0;
+alter table salary_monthly add column if not exists other_deduction numeric default 0;
+alter table salary_monthly add column if not exists other_payment numeric default 0;
+alter table salary_monthly add column if not exists actual_transfer_amount numeric default 0;
+alter table salary_monthly add column if not exists status text default '下書き' check (status in ('下書き', '確定', '支払済み'));
