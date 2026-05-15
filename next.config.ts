@@ -5,6 +5,15 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "4mb"
     }
+     },
+  async redirects() {
+    return [
+      {
+        source: "/admin/salary",
+        destination: "/admin/salaries",
+        permanent: false
+      }
+    ];
   }
 };
 
