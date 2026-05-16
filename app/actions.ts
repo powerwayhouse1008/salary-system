@@ -34,6 +34,17 @@ function otherIncomeItems(formData: FormData) {
     .filter((item) => item.name || item.amount > 0 || item.rate > 0);
 }
 
+function isExistingAuthUserError(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return message.includes("already") || message.includes("registered") || message.includes("exists");
+}
+
+async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>, email: string) {
+  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) throw error;
+  return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
+}
+
 export async function saveEmployee(formData: FormData) {
   await requireUser("admin");
   const supabase = getSupabaseAdmin();
@@ -57,14 +68,40 @@ export async function saveEmployee(formData: FormData) {
     const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
     throwIfSupabaseError(error, "社員を更新できませんでした");
   } else {
-    const { data: authUser, error } = await supabase.auth.admin.createUser({
+    const { data: existingProfile, error: existingProfileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", payload.email)
+      .maybeSingle();
+    throwIfSupabaseError(existingProfileError, "社員情報を確認できませんでした");
+
+    if (existingProfile?.id) {
+      const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", existingProfile.id);
+      throwIfSupabaseError(error, "社員を更新できませんでした");
+      revalidatePath("/admin/employees");
+      return;
+    }
+
+    const { data: createdAuthUser, error } = await supabase.auth.admin.createUser({
       email: payload.email,
       password: password ?? crypto.randomUUID(),
       email_confirm: true,
       user_metadata: { name: payload.name }
     });
-    if (error || !authUser.user) throw error ?? new Error("社員アカウントを作成できません。");
-    const { error: insertError } = await supabase.from("profiles").insert({ id: authUser.user.id, ...payloadWithPassword });
+
+    let authUser = createdAuthUser.user;
+    if (error || !authUser) {
+      if (!isExistingAuthUserError(error)) throw error ?? new Error("社員アカウントを作成できません。");
+      authUser = await findAuthUserByEmail(supabase, payload.email);
+      if (!authUser) throw error ?? new Error("既存の社員アカウントを確認できませんでした。");
+      const { error: updateAuthError } = await supabase.auth.admin.updateUserById(authUser.id, {
+        ...(password ? { password } : {}),
+        user_metadata: { name: payload.name }
+      });
+      if (updateAuthError) throw updateAuthError;
+    }
+
+    const { error: insertError } = await supabase.from("profiles").upsert({ id: authUser.id, ...payloadWithPassword }, { onConflict: "id" });
     throwIfSupabaseError(insertError, "社員を追加できませんでした");
   }
 
