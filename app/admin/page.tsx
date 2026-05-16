@@ -1,11 +1,11 @@
 import { StatCard } from "@/components/card";
 import { SalaryBadge } from "@/components/status-badge";
-import { currentMonth, yen } from "@/lib/format";
+import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
 import { getDashboardStats } from "@/lib/data";
 
 export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const params = await searchParams;
-  const month = params.month ?? currentMonth();
+  import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
   const stats = await getDashboardStats(month);
 
   return (
