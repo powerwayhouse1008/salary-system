@@ -223,6 +223,7 @@ export async function recalculateSalary(formData: FormData) {
     expense_receipts: numberValue(formData.get("expense_receipts")),
     other_deduction: numberValue(formData.get("other_deduction")),
     other_payment: numberValue(formData.get("other_payment")),
+    other_income_items: otherIncomeItems(formData),
     actual_transfer_amount: numberValue(formData.get("actual_transfer_amount"))
   };
 

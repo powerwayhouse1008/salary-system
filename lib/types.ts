@@ -72,6 +72,7 @@ export type SalaryMonthly = {
   ad_sales_total: number;
   brokerage_commission: number;
   ad_commission: number;
+  other_income_items: OtherIncomeItem[] | null;
   other_income_total: number;
   other_income_commission: number;
   social_insurance: number;

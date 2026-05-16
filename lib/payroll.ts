@@ -25,7 +25,7 @@ export function calculateSalary(
   const adRate = Number(staff.ad_commission_rate ?? 0) / 100;
   const brokerageCommission = Math.round(brokerageSalesTotal * brokerageRate);
   const adCommission = Math.round(adSalesTotal * adRate);
-  const otherIncomeItems = contracts.flatMap((contract) => contract.other_income_items ?? []);
+  const otherIncomeItems = [...contracts.flatMap((contract) => contract.other_income_items ?? []), ...(draft.other_income_items ?? [])];
   const otherIncomeTotal = sum(otherIncomeItems.map((item) => item.amount));
   const otherIncomeCommission = sum(otherIncomeItems.map((item) => item.amount * (Number(item.rate ?? 0) / 100)));
 

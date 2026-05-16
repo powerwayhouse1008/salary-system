@@ -1,5 +1,6 @@
 import { recalculateSalary } from "@/app/actions";
 import { ExportButtons } from "@/components/export-buttons";
+import { OtherIncomeFields } from "@/components/other-income-fields";
 import { SalaryBadge } from "@/components/status-badge";
 import { getProfiles, getSalaries } from "@/lib/data";
 import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
@@ -58,6 +59,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
             {deductionFields.map(([name, label]) => (
               <label key={name} className="field">{label}<input name={name} type="number" defaultValue={(salary?.[name] as number | undefined) ?? 0} /></label>
             ))}
+            <OtherIncomeFields className="sm:col-span-2 lg:col-span-1" initialItems={salary?.other_income_items} />
             <label className="field">状態<select name="status" defaultValue={salary?.status ?? "下書き"}><option>下書き</option><option>確定</option><option>支払済み</option></select></label>
             <div className="flex gap-2">
               <button className="btn btn-primary" type="submit">再計算・保存</button>
@@ -71,6 +73,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 <tr><th>賃貸売上合計</th><td>{yen.format(salary?.ad_sales_total ?? 0)}</td></tr>
                 <tr><th>売買歩合</th><td>{yen.format(salary?.brokerage_commission ?? 0)}</td></tr>
                 <tr><th>賃貸歩合</th><td>{yen.format(salary?.ad_commission ?? 0)}</td></tr>
+                <tr><th>その他収入合計</th><td>{yen.format(salary?.other_income_total ?? 0)}</td></tr>
                 <tr><th>その他収入歩合</th><td>{yen.format(salary?.other_income_commission ?? 0)}</td></tr>
                 <tr><th>合計</th><td>{yen.format(salary?.total_amount ?? 0)}</td></tr>
                 <tr><th>振り込み金額</th><td className="font-bold">{yen.format(salary?.transfer_amount ?? 0)}</td></tr>

@@ -72,6 +72,7 @@ create table if not exists salary_monthly (
   ad_sales_total numeric default 0,
   brokerage_commission numeric default 0,
   ad_commission numeric default 0,
+  other_income_items jsonb default '[]'::jsonb,
   other_income_total numeric default 0,
   other_income_commission numeric default 0,
   social_insurance numeric default 0,
@@ -222,6 +223,7 @@ alter table salary_monthly add column if not exists brokerage_sales_total numeri
 alter table salary_monthly add column if not exists ad_sales_total numeric default 0;
 alter table salary_monthly add column if not exists brokerage_commission numeric default 0;
 alter table salary_monthly add column if not exists ad_commission numeric default 0;
+alter table salary_monthly add column if not exists other_income_items jsonb default '[]'::jsonb;
 alter table salary_monthly add column if not exists other_income_total numeric default 0;
 alter table salary_monthly add column if not exists other_income_commission numeric default 0;
 alter table salary_monthly add column if not exists social_insurance numeric default 0;
