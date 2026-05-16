@@ -21,10 +21,6 @@ export default async function EmployeesPage() {
           <input name="password" type="password" placeholder="未入力ならMicrosoft専用" />
         </label>
         <label className="field">
-          電話
-          <input name="phone" />
-        </label>
-        <label className="field">
           権限
           <select name="role" defaultValue="staff">
             <option value="staff">staff</option>
@@ -57,7 +53,6 @@ export default async function EmployeesPage() {
               <th>氏名</th>
               <th>Email</th>
               <th>新パスワード</th>
-              <th>電話</th>
               <th>権限</th>
               <th>売買歩合</th>
               <th>賃貸歩合</th>
@@ -78,9 +73,6 @@ export default async function EmployeesPage() {
                   </td>
                   <td>
                     <input name="password" type="password" placeholder="変更時のみ入力" className="w-40" />
-                  </td>
-                  <td>
-                    <input name="phone" defaultValue={employee.phone ?? ""} className="w-36" />
                   </td>
                   <td>
                     <select name="role" defaultValue={employee.role}>
