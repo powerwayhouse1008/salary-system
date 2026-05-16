@@ -2,7 +2,7 @@ import { recalculateSalary } from "@/app/actions";
 import { ExportButtons } from "@/components/export-buttons";
 import { SalaryBadge } from "@/components/status-badge";
 import { getProfiles, getSalaries } from "@/lib/data";
-import { currentMonth, yen } from "@/lib/format";
+import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
 
 const deductionFields = [
   ["social_insurance", "社会保険（1分）"],
@@ -22,7 +22,7 @@ const deductionFields = [
 
 export default async function SalariesPage({ searchParams }: { searchParams: Promise<{ month?: string; staff?: string }> }) {
   const params = await searchParams;
-  const targetMonth = /^\d{4}-\d{2}$/.test(params.month ?? "") ? (params.month as string) : currentMonth();
+  const targetMonth = isValidYearMonth(params.month ?? "") ? (params.month as string) : currentMonth();
   const [profiles, salaries] = await Promise.all([getProfiles(), getSalaries({ targetMonth })]);
   const selectedStaff = params.staff ?? profiles[0]?.id;
   const salary = salaries.find((row) => row.staff_id === selectedStaff);
