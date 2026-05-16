@@ -2,9 +2,40 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 import type { Contract, Profile, SalaryFormula, SalaryMonthly } from "@/lib/types";
 
 export async function getProfiles() {
-  const { data, error } = await getSupabaseAdmin().from("profiles").select("*").order("name");
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.from("profiles").select("*").order("name");
   if (error) throw error;
-  return (data ?? []) as Profile[];
+  const profiles = (data ?? []) as Profile[];
+
+  try {
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (authError) throw authError;
+
+    const existingIds = new Set(profiles.map((profile) => profile.id));
+    const missingProfiles = authUsers.users
+      .filter((user) => user.email && !existingIds.has(user.id))
+      .map((user) => ({
+        id: user.id,
+        name: (user.user_metadata?.name as string | undefined) ?? user.email ?? "社員",
+        email: user.email ?? "",
+        role: "staff",
+        brokerage_commission_rate: 0,
+        ad_commission_rate: 0,
+        is_active: true
+      }));
+
+    if (missingProfiles.length) {
+      const { error: syncError } = await supabase.from("profiles").upsert(missingProfiles, { onConflict: "id" });
+      if (syncError) throw syncError;
+      const { data: synced, error: syncedError } = await supabase.from("profiles").select("*").order("name");
+      if (syncedError) throw syncedError;
+      return (synced ?? []) as Profile[];
+    }
+  } catch (syncError) {
+    console.error("Profile sync from auth users failed", syncError);
+  }
+
+  return profiles;
 }
 
 export async function getContracts(options: { staffId?: string; limit?: number } = {}) {

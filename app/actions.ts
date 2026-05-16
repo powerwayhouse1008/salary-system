@@ -112,10 +112,12 @@ export async function saveEmployee(formData: FormData) {
       }
     }
 
-    revalidatePath("/admin/employees");
   } catch (error) {
     employeeErrorRedirect(error);
   }
+
+  revalidatePath("/admin/employees");
+  redirect("/admin/employees");
 }
 
 export async function saveContract(formData: FormData) {
