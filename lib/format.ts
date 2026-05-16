@@ -17,3 +17,6 @@ export function textValue(value: FormDataEntryValue | null) {
 export function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
+export function isValidYearMonth(value: string | undefined): value is string {
+  return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
