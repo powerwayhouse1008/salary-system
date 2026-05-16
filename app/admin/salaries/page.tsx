@@ -22,7 +22,7 @@ const deductionFields = [
 
 export default async function SalariesPage({ searchParams }: { searchParams: Promise<{ month?: string; staff?: string }> }) {
   const params = await searchParams;
-  const targetMonth = params.month ?? currentMonth();
+  const targetMonth = /^\d{4}-\d{2}$/.test(params.month ?? "") ? (params.month as string) : currentMonth();
   const [profiles, salaries] = await Promise.all([getProfiles(), getSalaries({ targetMonth })]);
   const selectedStaff = params.staff ?? profiles[0]?.id;
   const salary = salaries.find((row) => row.staff_id === selectedStaff);
