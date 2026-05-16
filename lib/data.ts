@@ -86,6 +86,9 @@ function sum(values: number[]) {
 }
 
 function nextMonth(targetMonth: string) {
+  if (!/^\d{4}-\d{2}$/.test(targetMonth)) {
+    throw new Error("対象月の形式が正しくありません。");
+  }
   const [year, month] = targetMonth.split("-").map(Number);
   const next = new Date(Date.UTC(year, month, 1));
   return next.toISOString().slice(0, 10);
