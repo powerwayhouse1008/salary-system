@@ -19,7 +19,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
         {params.error ? (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            ログインできません。IDまたは権限を確認してください。
+            ログインできません。ID、パスワード、または権限を確認してください。
           </div>
         ) : null}
 
@@ -45,13 +45,17 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             ログインID / Email
             <input name="login" autoComplete="username" placeholder="admin または staff@example.com" required />
           </label>
+          <label className="field">
+            パスワード
+            <input name="password" type="password" autoComplete="current-password" required />
+          </label>
           
           <button type="submit" className="btn w-full">
             IDでログイン
           </button>
         </form>
 
-       <p className="mt-4 text-xs text-slate-500">管理者ID: admin（パスワード不要）</p>
+       <p className="mt-4 text-xs text-slate-500">管理者ID: admin / 初期パスワード: admin123</p>
       </section>
     </main>
   );
@@ -63,6 +67,7 @@ async function credentialsLogin(formData: FormData) {
   try {
     await signIn("credentials", {
       login: String(formData.get("login") ?? ""),
+      password: String(formData.get("password") ?? ""),
       redirectTo: "/"
     });
   } catch (error) {

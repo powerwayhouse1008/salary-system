@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { getSupabaseAdmin, hasSupabaseAdminEnv } from "@/lib/supabase";
 import type { Role } from "@/lib/types";
 
@@ -12,6 +13,7 @@ const allowedDomains = (process.env.ALLOWED_EMAIL_DOMAINS ?? "")
 const autoCreateProfile = process.env.AUTO_CREATE_PROFILE !== "false";
 const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL?.toLowerCase();
 const localAdminEmail = process.env.LOCAL_ADMIN_EMAIL?.toLowerCase() ?? "admin@local.internal";
+const localAdminPassword = process.env.LOCAL_ADMIN_PASSWORD ?? "admin123";
 const hasMicrosoftEntraConfig = Boolean(
   process.env.AUTH_MICROSOFT_ENTRA_ID_ID &&
     process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET &&
@@ -39,12 +41,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       name: "ID・パスワード",
       credentials: {
         login: { label: "ログインID", type: "text" },
-        
+        password: { label: "パスワード", type: "password" }
       },
       async authorize(credentials) {
         try {
           const login = String(credentials?.login ?? "").trim().toLowerCase();
-           if (!login || !hasSupabaseAdminEnv()) return null;
+          const password = String(credentials?.password ?? "");
+           if (!login || !password || !hasSupabaseAdminEnv()) return null;
 
           const supabase = getSupabaseAdmin();
           const adminAliases = [localAdminEmail, "admin", "admin@admin.com"];
@@ -82,6 +85,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 id: authUser.user.id,
                 name: "Admin",
                 email,
+                password_hash: await hashPassword(localAdminPassword),
                 role: "admin",
                 is_active: true,
                 last_login_at: new Date().toISOString()
@@ -94,6 +98,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           
 
           if (!profile || profile.is_active === false) return null;
+          const isInitialAdmin = login === "admin" && !profile.password_hash && password === localAdminPassword;
+          const passwordMatches = isInitialAdmin || (await verifyPassword(password, profile.password_hash));
+          if (!passwordMatches) return null;
+
+          if (isInitialAdmin) {
+            await supabase.from("profiles").update({ password_hash: await hashPassword(password) }).eq("id", profile.id);
+          }
            
 
           await supabase
