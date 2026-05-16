@@ -1,5 +1,4 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { isValidYearMonth } from "@/lib/format";
 import type { Contract, Profile, SalaryFormula, SalaryMonthly } from "@/lib/types";
 
 export async function getProfiles() {

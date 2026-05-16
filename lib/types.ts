@@ -10,7 +10,6 @@ export type Profile = {
   email: string;
   password_hash?: string | null;
   role: Role;
-  phone?: string | null;
   brokerage_commission_rate: number;
   ad_commission_rate: number;
   is_active: boolean;

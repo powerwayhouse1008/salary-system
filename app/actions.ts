@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { isValidYearMonth, numberValue, textValue } from "@/lib/format";
+import { numberValue, textValue } from "@/lib/format";
 import { calculateSalary, defaultFormula } from "@/lib/payroll";
 import { hashPassword } from "@/lib/password";
 import { getSupabaseAdmin } from "@/lib/supabase";
@@ -16,6 +16,10 @@ async function requireUser(role?: "admin") {
   return session.user;
 }
 
+function throwIfSupabaseError(error: { message: string } | null, fallback: string) {
+  if (error) throw new Error(`${fallback}: ${error.message}`);
+}
+
 export async function saveEmployee(formData: FormData) {
   await requireUser("admin");
   const supabase = getSupabaseAdmin();
@@ -26,7 +30,6 @@ export async function saveEmployee(formData: FormData) {
     name: textValue(formData.get("name")) ?? "",
     email: (textValue(formData.get("email")) ?? "").toLowerCase(),
     role: textValue(formData.get("role")) ?? "staff",
-    phone: textValue(formData.get("phone")),
     brokerage_commission_rate: numberValue(formData.get("brokerage_commission_rate")),
      ad_commission_rate: numberValue(formData.get("ad_commission_rate")),
     is_active: formData.get("is_active") === "on"
@@ -37,7 +40,8 @@ export async function saveEmployee(formData: FormData) {
   };
 
   if (id) {
-    await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
+    const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
+    throwIfSupabaseError(error, "社員を更新できませんでした");
   } else {
     const { data: authUser, error } = await supabase.auth.admin.createUser({
       email: payload.email,
@@ -46,7 +50,8 @@ export async function saveEmployee(formData: FormData) {
       user_metadata: { name: payload.name }
     });
     if (error || !authUser.user) throw error ?? new Error("社員アカウントを作成できません。");
-    await supabase.from("profiles").insert({ id: authUser.user.id, ...payloadWithPassword });
+    const { error: insertError } = await supabase.from("profiles").insert({ id: authUser.user.id, ...payloadWithPassword });
+    throwIfSupabaseError(insertError, "社員を追加できませんでした");
   }
 
   revalidatePath("/admin/employees");
@@ -87,9 +92,11 @@ export async function saveContract(formData: FormData) {
   };
 
   if (id && isAdmin) {
-    await supabase.from("contracts").update(payload).eq("id", id);
+    const { error } = await supabase.from("contracts").update(payload).eq("id", id);
+    throwIfSupabaseError(error, "契約を更新できませんでした");
   } else {
-    await supabase.from("contracts").insert(payload);
+    const { error } = await supabase.from("contracts").insert(payload);
+    throwIfSupabaseError(error, "契約を追加できませんでした");
   }
 
   revalidatePath(isAdmin ? "/admin/contracts" : "/staff/contracts");
@@ -101,7 +108,7 @@ export async function confirmPayment(formData: FormData) {
   const id = textValue(formData.get("id"));
   if (!id) throw new Error("契約IDがありません。");
 
-  await supabase
+  const { error } = await supabase
     .from("contracts")
     .update({
       payment_status: "入金済み",
@@ -112,6 +119,7 @@ export async function confirmPayment(formData: FormData) {
       updated_at: new Date().toISOString()
     })
     .eq("id", id);
+  throwIfSupabaseError(error, "入金確認を保存できませんでした");
 
   revalidatePath("/admin/contracts");
 }
@@ -123,13 +131,14 @@ export async function updateContractStatus(formData: FormData) {
   const paymentStatus = textValue(formData.get("payment_status"));
   if (!id || !paymentStatus) throw new Error("契約IDまたは状態がありません。");
 
-  await supabase
+  const { error } = await supabase
     .from("contracts")
     .update({
       payment_status: paymentStatus,
       updated_at: new Date().toISOString()
     })
     .eq("id", id);
+  throwIfSupabaseError(error, "契約状態を保存できませんでした");
 
   revalidatePath("/admin/contracts");
 }
@@ -148,9 +157,17 @@ export async function saveFormula(formData: FormData) {
     updated_at: new Date().toISOString()
   };
 
-  if (payload.is_default) await supabase.from("salary_formulas").update({ is_default: false }).neq("id", id ?? "");
-  if (id) await supabase.from("salary_formulas").update(payload).eq("id", id);
-  else await supabase.from("salary_formulas").insert(payload);
+  if (payload.is_default) {
+    const { error } = await supabase.from("salary_formulas").update({ is_default: false }).neq("id", id ?? "");
+    throwIfSupabaseError(error, "既定の計算式を更新できませんでした");
+  }
+  if (id) {
+    const { error } = await supabase.from("salary_formulas").update(payload).eq("id", id);
+    throwIfSupabaseError(error, "計算式を更新できませんでした");
+  } else {
+    const { error } = await supabase.from("salary_formulas").insert(payload);
+    throwIfSupabaseError(error, "計算式を追加できませんでした");
+  }
 
   revalidatePath("/admin/formulas");
 }
@@ -195,7 +212,7 @@ export async function recalculateSalary(formData: FormData) {
   };
 
   const totals = calculateSalary(staff, contracts ?? [], draft, formula ?? defaultFormula);
-  await supabase.from("salary_monthly").upsert(
+  const { error } = await supabase.from("salary_monthly").upsert(
     {
       ...draft,
       ...totals,
@@ -206,6 +223,7 @@ export async function recalculateSalary(formData: FormData) {
     },
     { onConflict: "staff_id,target_month" }
   );
+  throwIfSupabaseError(error, "給与を保存できませんでした");
 
   revalidatePath("/admin/salaries");
   revalidatePath("/staff/salary");

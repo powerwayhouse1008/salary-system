@@ -8,7 +8,6 @@ create table if not exists profiles (
   email text unique not null,
   password_hash text,
   role text not null default 'staff' check (role in ('admin', 'staff')),
-  phone text,
   brokerage_commission_rate numeric default 0,
   ad_commission_rate numeric default 0,
   is_active boolean default true,
@@ -145,20 +144,80 @@ values (
 )
 on conflict do nothing;
 
--- Backward-compatible migrations for existing projects
+-- Backward-compatible migrations for existing projects. Re-run this file after deploys.
+alter table profiles add column if not exists microsoft_id text;
+alter table profiles add column if not exists avatar_url text;
+alter table profiles add column if not exists password_hash text;
+alter table profiles add column if not exists role text default 'staff';
+alter table profiles add column if not exists brokerage_commission_rate numeric default 0;
+alter table profiles add column if not exists ad_commission_rate numeric default 0;
+alter table profiles add column if not exists is_active boolean default true;
+alter table profiles add column if not exists last_login_at timestamptz;
+alter table profiles add column if not exists created_at timestamptz default now();
+alter table profiles add column if not exists updated_at timestamptz default now();
+alter table profiles drop column if exists phone;
+
+update profiles set role = 'staff' where role is null or role not in ('admin', 'staff');
+alter table profiles alter column role set default 'staff';
+alter table profiles drop constraint if exists profiles_role_check;
+alter table profiles add constraint profiles_role_check check (role in ('admin', 'staff'));
+
+alter table salary_formulas add column if not exists formula_total text;
+alter table salary_formulas add column if not exists formula_deduction text;
+alter table salary_formulas add column if not exists formula_transfer text;
+alter table salary_formulas add column if not exists formula_remaining text;
+alter table salary_formulas add column if not exists is_default boolean default false;
+alter table salary_formulas add column if not exists created_at timestamptz default now();
+alter table salary_formulas add column if not exists updated_at timestamptz default now();
+
+alter table contracts add column if not exists staff_id uuid;
+alter table contracts add column if not exists contract_date date;
+alter table contracts add column if not exists contract_number text;
+alter table contracts add column if not exists customer_name text;
+alter table contracts add column if not exists residence_status text;
+alter table contracts add column if not exists phone text;
+alter table contracts add column if not exists property_name text;
+alter table contracts add column if not exists address text;
+alter table contracts add column if not exists rent numeric default 0;
+alter table contracts add column if not exists bank_deposit numeric default 0;
+alter table contracts add column if not exists withdrawal numeric default 0;
+alter table contracts add column if not exists transfer_fee numeric default 0;
+alter table contracts add column if not exists brokerage_sales numeric default 0;
+alter table contracts add column if not exists ad_sales numeric default 0;
+alter table contracts add column if not exists ad_payment numeric default 0;
+alter table contracts add column if not exists refund_or_adjustment numeric default 0;
+alter table contracts add column if not exists contract_type text;
+alter table contracts add column if not exists management_company text;
+alter table contracts add column if not exists previous_ad_payment numeric default 0;
+alter table contracts add column if not exists salary_item text;
+alter table contracts add column if not exists salary_settlement numeric default 0;
+alter table contracts add column if not exists expected_payment_amount numeric default 0;
+alter table contracts add column if not exists actual_received_amount numeric default 0;
+alter table contracts add column if not exists payment_status text default '未確認';
 alter table contracts add column if not exists payment_confirmed_by uuid;
 alter table contracts add column if not exists payment_note text;
 alter table contracts add column if not exists payment_confirmed_at timestamptz;
-alter table salary_monthly add column if not exists confirmed_by uuid;
-alter table salary_monthly add column if not exists confirmed_at timestamptz;
+alter table contracts add column if not exists created_at timestamptz default now();
+alter table contracts add column if not exists updated_at timestamptz default now();
+
+alter table contracts drop constraint if exists contracts_payment_status_check;
+update contracts
+set payment_status = '未確認'
+where payment_status is null
+  or payment_status not in ('未確認', '入金待ち', '一部入金', '入金済み', '返金あり', 'キャンセル');
+alter table contracts alter column payment_status set default '未確認';
+alter table contracts add constraint contracts_payment_status_check
+  check (payment_status in ('未確認', '入金待ち', '一部入金', '入金済み', '返金あり', 'キャンセル'));
 
 alter table contracts drop constraint if exists contracts_payment_confirmed_by_fkey;
 alter table contracts add constraint contracts_payment_confirmed_by_fkey foreign key (payment_confirmed_by) references profiles(id);
 
-alter table salary_monthly drop constraint if exists salary_monthly_confirmed_by_fkey;
-alter table salary_monthly add constraint salary_monthly_confirmed_by_fkey foreign key (confirmed_by) references profiles(id);
-
--- Ensure salary_monthly columns used by application exist on older projects
+alter table salary_monthly add column if not exists staff_id uuid;
+alter table salary_monthly add column if not exists target_month text;
+alter table salary_monthly add column if not exists brokerage_sales_total numeric default 0;
+alter table salary_monthly add column if not exists ad_sales_total numeric default 0;
+alter table salary_monthly add column if not exists brokerage_commission numeric default 0;
+alter table salary_monthly add column if not exists ad_commission numeric default 0;
 alter table salary_monthly add column if not exists social_insurance numeric default 0;
 alter table salary_monthly add column if not exists pension numeric default 0;
 alter table salary_monthly add column if not exists employment_insurance numeric default 0;
@@ -171,5 +230,24 @@ alter table salary_monthly add column if not exists previous_remaining_amount nu
 alter table salary_monthly add column if not exists expense_receipts numeric default 0;
 alter table salary_monthly add column if not exists other_deduction numeric default 0;
 alter table salary_monthly add column if not exists other_payment numeric default 0;
+alter table salary_monthly add column if not exists total_amount numeric default 0;
+alter table salary_monthly add column if not exists transfer_amount numeric default 0;
 alter table salary_monthly add column if not exists actual_transfer_amount numeric default 0;
-alter table salary_monthly add column if not exists status text default '下書き' check (status in ('下書き', '確定', '支払済み'));
+alter table salary_monthly add column if not exists remaining_amount numeric default 0;
+alter table salary_monthly add column if not exists status text default '下書き';
+alter table salary_monthly add column if not exists confirmed_by uuid;
+alter table salary_monthly add column if not exists confirmed_at timestamptz;
+alter table salary_monthly add column if not exists created_at timestamptz default now();
+alter table salary_monthly add column if not exists updated_at timestamptz default now();
+
+alter table salary_monthly drop constraint if exists salary_monthly_status_check;
+update salary_monthly
+set status = '下書き'
+where status is null or status not in ('下書き', '確定', '支払済み');
+alter table salary_monthly alter column status set default '下書き';
+alter table salary_monthly add constraint salary_monthly_status_check check (status in ('下書き', '確定', '支払済み'));
+
+alter table salary_monthly drop constraint if exists salary_monthly_confirmed_by_fkey;
+alter table salary_monthly add constraint salary_monthly_confirmed_by_fkey foreign key (confirmed_by) references profiles(id);
+
+create unique index if not exists salary_monthly_staff_target_month_key on salary_monthly(staff_id, target_month);
