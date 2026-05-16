@@ -161,7 +161,7 @@ export async function recalculateSalary(formData: FormData) {
   const staffId = textValue(formData.get("staff_id"));
   const targetMonth = textValue(formData.get("target_month"));
   if (!staffId || !targetMonth) throw new Error("社員と対象月を選択してください。");
-
+  if (!/^\d{4}-\d{2}$/.test(targetMonth)) throw new Error("対象月の形式が正しくありません。");
   const [{ data: staff }, { data: formula }, { data: contracts }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", staffId).single(),
     supabase.from("salary_formulas").select("*").eq("is_default", true).maybeSingle(),
@@ -212,6 +212,9 @@ export async function recalculateSalary(formData: FormData) {
 }
 
 function nextMonth(targetMonth: string) {
+  if (!/^\d{4}-\d{2}$/.test(targetMonth)) {
+    throw new Error("対象月の形式が正しくありません。");
+  }
   const [year, month] = targetMonth.split("-").map(Number);
   const next = new Date(Date.UTC(year, month, 1));
   return next.toISOString().slice(0, 10);
