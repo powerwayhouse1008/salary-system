@@ -45,67 +45,77 @@ async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>
   return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
 }
 
+function employeeErrorRedirect(error: unknown): never {
+  console.error("saveEmployee failed", error);
+  const message = error instanceof Error ? error.message : "社員を保存できませんでした。";
+  redirect(`/admin/employees?error=${encodeURIComponent(message)}`);
+}
+
 export async function saveEmployee(formData: FormData) {
   await requireUser("admin");
-  const supabase = getSupabaseAdmin();
-  const id = textValue(formData.get("id"));
-  const rawPassword = textValue(formData.get("password"));
-  const password = rawPassword?.trim() || null;
-  const payload = {
-    name: textValue(formData.get("name")) ?? "",
-    email: (textValue(formData.get("email")) ?? "").toLowerCase(),
-    role: textValue(formData.get("role")) ?? "staff",
-    brokerage_commission_rate: numberValue(formData.get("brokerage_commission_rate")),
-     ad_commission_rate: numberValue(formData.get("ad_commission_rate")),
-    is_active: formData.get("is_active") === "on"
-  };
-  const payloadWithPassword = {
-    ...payload,
-    ...(password ? { password_hash: await hashPassword(password) } : {})
-  };
+  try {
+    const supabase = getSupabaseAdmin();
+    const id = textValue(formData.get("id"));
+    const rawPassword = textValue(formData.get("password"));
+    const password = rawPassword?.trim() || null;
+    const payload = {
+      name: textValue(formData.get("name")) ?? "",
+      email: (textValue(formData.get("email")) ?? "").toLowerCase(),
+      role: textValue(formData.get("role")) ?? "staff",
+      brokerage_commission_rate: numberValue(formData.get("brokerage_commission_rate")),
+      ad_commission_rate: numberValue(formData.get("ad_commission_rate")),
+      is_active: formData.get("is_active") === "on"
+    };
+    if (!payload.email) throw new Error("Emailを入力してください。");
 
-  if (id) {
-    const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
-    throwIfSupabaseError(error, "社員を更新できませんでした");
-  } else {
-    const { data: existingProfile, error: existingProfileError } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", payload.email)
-      .maybeSingle();
-    throwIfSupabaseError(existingProfileError, "社員情報を確認できませんでした");
+    const payloadWithPassword = {
+      ...payload,
+      ...(password ? { password_hash: await hashPassword(password) } : {})
+    };
 
-    if (existingProfile?.id) {
-      const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", existingProfile.id);
+    if (id) {
+      const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
       throwIfSupabaseError(error, "社員を更新できませんでした");
-      revalidatePath("/admin/employees");
-      return;
+    } else {
+      const { data: existingProfile, error: existingProfileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("email", payload.email)
+        .maybeSingle();
+      throwIfSupabaseError(existingProfileError, "社員情報を確認できませんでした");
+
+      if (existingProfile?.id) {
+        const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", existingProfile.id);
+        throwIfSupabaseError(error, "社員を更新できませんでした");
+      } else {
+        const { data: createdAuthUser, error } = await supabase.auth.admin.createUser({
+          email: payload.email,
+          password: password ?? crypto.randomUUID(),
+          email_confirm: true,
+          user_metadata: { name: payload.name }
+        });
+
+        let authUser = createdAuthUser?.user ?? null;
+        if (error || !authUser) {
+          if (!isExistingAuthUserError(error)) throw error ?? new Error("社員アカウントを作成できません。");
+          authUser = await findAuthUserByEmail(supabase, payload.email);
+          if (!authUser) throw error ?? new Error("既存の社員アカウントを確認できませんでした。");
+          const { error: updateAuthError } = await supabase.auth.admin.updateUserById(authUser.id, {
+            ...(password ? { password } : {}),
+            user_metadata: { name: payload.name }
+          });
+          if (updateAuthError) throw updateAuthError;
+        }
+
+        const { error: insertError } = await supabase.from("profiles").upsert({ id: authUser.id, ...payloadWithPassword }, { onConflict: "id" });
+        throwIfSupabaseError(insertError, "社員を追加できませんでした");
+      }
     }
 
-    const { data: createdAuthUser, error } = await supabase.auth.admin.createUser({
-      email: payload.email,
-      password: password ?? crypto.randomUUID(),
-      email_confirm: true,
-      user_metadata: { name: payload.name }
-    });
-
-    let authUser = createdAuthUser.user;
-    if (error || !authUser) {
-      if (!isExistingAuthUserError(error)) throw error ?? new Error("社員アカウントを作成できません。");
-      authUser = await findAuthUserByEmail(supabase, payload.email);
-      if (!authUser) throw error ?? new Error("既存の社員アカウントを確認できませんでした。");
-      const { error: updateAuthError } = await supabase.auth.admin.updateUserById(authUser.id, {
-        ...(password ? { password } : {}),
-        user_metadata: { name: payload.name }
-      });
-      if (updateAuthError) throw updateAuthError;
-    }
-
-    const { error: insertError } = await supabase.from("profiles").upsert({ id: authUser.id, ...payloadWithPassword }, { onConflict: "id" });
-    throwIfSupabaseError(insertError, "社員を追加できませんでした");
+    revalidatePath("/admin/employees");
+  } catch (error) {
+    employeeErrorRedirect(error);
   }
-
-  revalidatePath("/admin/employees");
 }
 
 export async function saveContract(formData: FormData) {

@@ -1,12 +1,18 @@
 import { saveEmployee } from "@/app/actions";
 import { getProfiles } from "@/lib/data";
 
-export default async function EmployeesPage() {
+export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const params = await searchParams;
   const employees = await getProfiles();
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">社員管理</h1>
+      {params.error ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {params.error}
+        </div>
+      ) : null}
       <form action={saveEmployee} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-4">
         <label className="field">
           氏名
