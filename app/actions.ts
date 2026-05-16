@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { numberValue, textValue } from "@/lib/format";
+import { isValidYearMonth, numberValue, textValue } from "@/lib/format";
 import { calculateSalary, defaultFormula } from "@/lib/payroll";
 import { hashPassword } from "@/lib/password";
 import { getSupabaseAdmin } from "@/lib/supabase";
