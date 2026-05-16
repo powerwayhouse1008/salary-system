@@ -1,6 +1,11 @@
 export type Role = "admin" | "staff";
 export type PaymentStatus = "未確認" | "入金待ち" | "一部入金" | "入金済み" | "返金あり" | "キャンセル";
 export type SalaryStatus = "下書き" | "確定" | "支払済み";
+export type OtherIncomeItem = {
+  name: string;
+  amount: number;
+  rate: number;
+};
 
 export type Profile = {
   id: string;
@@ -32,6 +37,7 @@ export type Contract = {
   transfer_fee: number;
   brokerage_sales: number;
   ad_sales: number;
+  other_income_items: OtherIncomeItem[] | null;
   ad_payment: number;
   refund_or_adjustment: number;
   contract_type: string | null;
@@ -66,6 +72,8 @@ export type SalaryMonthly = {
   ad_sales_total: number;
   brokerage_commission: number;
   ad_commission: number;
+  other_income_total: number;
+  other_income_commission: number;
   social_insurance: number;
   pension: number;
   employment_insurance: number;

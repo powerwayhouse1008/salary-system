@@ -12,13 +12,14 @@ export default async function StaffSalaryPage() {
       <h1 className="text-2xl font-bold">給与確認</h1>
       <div className="table-wrap">
         <table className="data-table">
-           <thead><tr><th>対象月</th><th>売買売上</th><th>賃貸売上</th><th>合計</th><th>振り込み金額</th><th>残り金額</th><th>状態</th></tr></thead>
+           <thead><tr><th>対象月</th><th>売買売上</th><th>賃貸売上</th><th>その他収入歩合</th><th>合計</th><th>振り込み金額</th><th>残り金額</th><th>状態</th></tr></thead>
           <tbody>
             {salaries.map((salary) => (
               <tr key={salary.id}>
                 <td>{salary.target_month}</td>
                 <td>{yen.format(salary.brokerage_sales_total)}</td>
                 <td>{yen.format(salary.ad_sales_total)}</td>
+                <td>{yen.format(salary.other_income_commission)}</td>
                 <td>{yen.format(salary.total_amount)}</td>
                 <td className="font-bold">{yen.format(salary.transfer_amount)}</td>
                 <td>{yen.format(salary.remaining_amount)}</td>

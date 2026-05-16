@@ -20,6 +20,20 @@ function throwIfSupabaseError(error: { message: string } | null, fallback: strin
   if (error) throw new Error(`${fallback}: ${error.message}`);
 }
 
+function otherIncomeItems(formData: FormData) {
+  const names = formData.getAll("other_income_name");
+  const amounts = formData.getAll("other_income_amount");
+  const rates = formData.getAll("other_income_rate");
+
+  return names
+    .map((name, index) => ({
+      name: textValue(name) ?? "",
+      amount: numberValue(amounts[index] ?? null),
+      rate: numberValue(rates[index] ?? null)
+    }))
+    .filter((item) => item.name || item.amount > 0 || item.rate > 0);
+}
+
 export async function saveEmployee(formData: FormData) {
   await requireUser("admin");
   const supabase = getSupabaseAdmin();
@@ -78,6 +92,7 @@ export async function saveContract(formData: FormData) {
     transfer_fee: numberValue(formData.get("transfer_fee")),
     brokerage_sales: numberValue(formData.get("brokerage_sales")),
     ad_sales: numberValue(formData.get("ad_sales")),
+    other_income_items: otherIncomeItems(formData),
     ad_payment: numberValue(formData.get("ad_payment")),
     refund_or_adjustment: numberValue(formData.get("refund_or_adjustment")),
     contract_type: textValue(formData.get("contract_type")),

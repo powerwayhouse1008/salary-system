@@ -1,4 +1,5 @@
 import { confirmPayment, saveContract, updateContractStatus } from "@/app/actions";
+import { OtherIncomeFields } from "@/components/other-income-fields";
 import { PaymentBadge } from "@/components/status-badge";
 import { getContracts, getProfiles } from "@/lib/data";
 import { yen } from "@/lib/format";
@@ -22,12 +23,13 @@ export default async function AdminContractsPage() {
         <label className="field">賃貸売上<input name="ad_sales" type="number" /></label>
         <label className="field">予定入金額<input name="expected_payment_amount" type="number" /></label>
         <label className="field">実入金額<input name="actual_received_amount" type="number" /></label>
+        <OtherIncomeFields />
         <div className="pt-6"><button className="btn btn-primary" type="submit">追加</button></div>
       </form>
       <div className="table-wrap">
         <table className="data-table">
           <thead>
-           <tr><th>契約日</th><th>番号</th><th>契約名前</th><th>担当</th><th>物件</th><th>売買売上</th><th>賃貸売上</th><th>予定</th><th>実入金</th><th>状態</th><th>入金確認</th></tr>
+           <tr><th>契約日</th><th>番号</th><th>契約名前</th><th>担当</th><th>物件</th><th>売買売上</th><th>賃貸売上</th><th>その他収入</th><th>予定</th><th>実入金</th><th>状態</th><th>入金確認</th></tr>
           </thead>
           <tbody>
             {contracts.map((contract) => (
@@ -39,6 +41,15 @@ export default async function AdminContractsPage() {
                 <td>{contract.property_name}</td>
                 <td>{yen.format(contract.brokerage_sales)}</td>
                 <td>{yen.format(contract.ad_sales)}</td>
+                <td>
+                  {contract.other_income_items?.length
+                    ? contract.other_income_items.map((item) => (
+                        <div key={`${contract.id}-${item.name}-${item.amount}-${item.rate}`}>
+                          {item.name}: {yen.format(item.amount)} / {item.rate}%
+                        </div>
+                      ))
+                    : null}
+                </td>
                 <td>{yen.format(contract.expected_payment_amount)}</td>
                 <td>
                   <form action={confirmPayment} className="flex items-center gap-2">

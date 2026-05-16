@@ -46,6 +46,7 @@ create table if not exists contracts (
   transfer_fee numeric default 0,
   brokerage_sales numeric default 0,
   ad_sales numeric default 0,
+  other_income_items jsonb default '[]'::jsonb,
   ad_payment numeric default 0,
   refund_or_adjustment numeric default 0,
   contract_type text,
@@ -71,6 +72,8 @@ create table if not exists salary_monthly (
   ad_sales_total numeric default 0,
   brokerage_commission numeric default 0,
   ad_commission numeric default 0,
+  other_income_total numeric default 0,
+  other_income_commission numeric default 0,
   social_insurance numeric default 0,
   pension numeric default 0,
   employment_insurance numeric default 0,
@@ -136,7 +139,7 @@ create policy "salaries admin write" on salary_monthly for all using (public.is_
 insert into salary_formulas (name, formula_total, formula_deduction, formula_transfer, formula_remaining, is_default)
 values (
   '標準給与計算',
-  '売買売上合計 * 売買歩合率 + 賃貸売上合計 * 賃貸歩合率 + 前月残り金額',
+  '売買売上合計 * 売買歩合率 + 賃貸売上合計 * 賃貸歩合率 + その他収入歩合 + 前月残り金額',
   '社会保険 + 年金料 + 雇用保険料 + 所得税 + 定期券 + 成約交通費 + IT + 物件管理費用 + 経費領収書 + その他控除',
   '合計 - 控除合計 + その他支給',
   '合計 - 控除合計 + その他支給 - 実際振込金額',
@@ -184,6 +187,7 @@ alter table contracts add column if not exists withdrawal numeric default 0;
 alter table contracts add column if not exists transfer_fee numeric default 0;
 alter table contracts add column if not exists brokerage_sales numeric default 0;
 alter table contracts add column if not exists ad_sales numeric default 0;
+alter table contracts add column if not exists other_income_items jsonb default '[]'::jsonb;
 alter table contracts add column if not exists ad_payment numeric default 0;
 alter table contracts add column if not exists refund_or_adjustment numeric default 0;
 alter table contracts add column if not exists contract_type text;
@@ -218,6 +222,8 @@ alter table salary_monthly add column if not exists brokerage_sales_total numeri
 alter table salary_monthly add column if not exists ad_sales_total numeric default 0;
 alter table salary_monthly add column if not exists brokerage_commission numeric default 0;
 alter table salary_monthly add column if not exists ad_commission numeric default 0;
+alter table salary_monthly add column if not exists other_income_total numeric default 0;
+alter table salary_monthly add column if not exists other_income_commission numeric default 0;
 alter table salary_monthly add column if not exists social_insurance numeric default 0;
 alter table salary_monthly add column if not exists pension numeric default 0;
 alter table salary_monthly add column if not exists employment_insurance numeric default 0;
@@ -251,3 +257,8 @@ alter table salary_monthly drop constraint if exists salary_monthly_confirmed_by
 alter table salary_monthly add constraint salary_monthly_confirmed_by_fkey foreign key (confirmed_by) references profiles(id);
 
 create unique index if not exists salary_monthly_staff_target_month_key on salary_monthly(staff_id, target_month);
+
+update salary_formulas
+set formula_total = replace(formula_total, ' + 前月残り金額', ' + その他収入歩合 + 前月残り金額')
+where formula_total is not null
+  and formula_total not like '%その他収入歩合%';

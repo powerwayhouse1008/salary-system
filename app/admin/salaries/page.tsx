@@ -32,6 +32,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     対象月: row.target_month,
     売買売上合計: row.brokerage_sales_total,
     賃貸売上合計: row.ad_sales_total,
+    その他収入歩合: row.other_income_commission,
     合計: row.total_amount,
     振り込み金額: row.transfer_amount,
     残り金額: row.remaining_amount,
@@ -70,6 +71,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 <tr><th>賃貸売上合計</th><td>{yen.format(salary?.ad_sales_total ?? 0)}</td></tr>
                 <tr><th>売買歩合</th><td>{yen.format(salary?.brokerage_commission ?? 0)}</td></tr>
                 <tr><th>賃貸歩合</th><td>{yen.format(salary?.ad_commission ?? 0)}</td></tr>
+                <tr><th>その他収入歩合</th><td>{yen.format(salary?.other_income_commission ?? 0)}</td></tr>
                 <tr><th>合計</th><td>{yen.format(salary?.total_amount ?? 0)}</td></tr>
                 <tr><th>振り込み金額</th><td className="font-bold">{yen.format(salary?.transfer_amount ?? 0)}</td></tr>
                 <tr><th>残り金額</th><td>{yen.format(salary?.remaining_amount ?? 0)}</td></tr>
