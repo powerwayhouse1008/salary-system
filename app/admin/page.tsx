@@ -5,7 +5,7 @@ import { getDashboardStats } from "@/lib/data";
 
 export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const params = await searchParams;
-  import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
+  const month = isValidYearMonth(params.month) ? params.month : currentMonth();
   const stats = await getDashboardStats(month);
 
   return (
