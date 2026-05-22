@@ -186,6 +186,21 @@ export async function saveContract(formData: FormData) {
   revalidatePath(isAdmin ? "/admin/contracts" : "/staff/contracts");
 }
 
+export async function deleteContract(formData: FormData) {
+  const user = await requireUser();
+  const supabase = getSupabaseAdmin();
+  const id = textValue(formData.get("id"));
+  if (!id) throw new Error("契約IDがありません。");
+
+  let query = supabase.from("contracts").delete().eq("id", id);
+  if (user.role !== "admin") query = query.eq("staff_id", user.id);
+
+  const { error } = await query;
+  throwIfSupabaseError(error, "契約を削除できませんでした");
+
+  revalidatePath(user.role === "admin" ? "/admin/contracts" : "/staff/contracts");
+}
+
 export async function confirmPayment(formData: FormData) {
   const user = await requireUser("admin");
   const supabase = getSupabaseAdmin();

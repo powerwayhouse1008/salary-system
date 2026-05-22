@@ -1,4 +1,4 @@
-import { saveContract } from "@/app/actions";
+import { deleteContract, saveContract } from "@/app/actions";
 import { auth } from "@/auth";
 import { PaymentBadge } from "@/components/status-badge";
 import { getContracts } from "@/lib/data";
@@ -49,6 +49,7 @@ export default async function StaffContractsPage() {
               <th>選考(返金等）</th>
               <th>管理会社</th>
               <th>状態</th>
+              <th>削除</th>
             </tr>
           </thead>
           <tbody>
@@ -67,6 +68,12 @@ export default async function StaffContractsPage() {
                 <td>{yen.format(contract.refund_or_adjustment)}</td>
                 <td>{contract.management_company}</td>
                 <td><PaymentBadge status={contract.payment_status} /></td>
+                <td>
+                  <form action={deleteContract}>
+                    <input type="hidden" name="id" value={contract.id} />
+                    <button className="btn btn-danger" type="submit">削除</button>
+                  </form>
+                </td>
               </tr>
             ))}
           </tbody>
