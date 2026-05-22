@@ -13,7 +13,6 @@ const moneyFields: { key: keyof Contract; label: string }[] = [
   { key: "rent", label: "賃料" },
   { key: "brokerage_sales", label: "AD売上" },
   { key: "ad_sales", label: "仲介売上" },
-  { key: "ad_payment", label: "AD入金" },
   { key: "refund_or_adjustment", label: "選考(返金等）" }
 ];
 

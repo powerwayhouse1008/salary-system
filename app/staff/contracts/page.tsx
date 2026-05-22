@@ -28,23 +28,44 @@ export default async function StaffContractsPage() {
         <label className="field">賃料<input name="rent" type="number" /></label>
         <label className="field">AD売上<input name="brokerage_sales" type="number" /></label>
         <label className="field">仲介売上<input name="ad_sales" type="number" /></label>
-        <label className="field">AD入金<input name="ad_payment" type="number" /></label>
         <label className="field">選考(返金等）<input name="refund_or_adjustment" type="number" /></label>
         <label className="field">管理会社<input name="management_company" /></label>
         <div className="pt-6"><button className="btn btn-primary" type="submit">行を追加</button></div>
       </form>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>契約日付</th><th>契約種類</th><th>契約名前</th><th>物件名</th><th>AD売上</th><th>仲介売上</th><th>状態</th></tr></thead>
+          <thead>
+            <tr>
+              <th>契約日付</th>
+              <th>契約種類</th>
+              <th>契約名前</th>
+              <th>在留資格</th>
+              <th>携帯電話</th>
+              <th>物件名</th>
+              <th>住所</th>
+              <th>賃料</th>
+              <th>AD売上</th>
+              <th>仲介売上</th>
+              <th>選考(返金等）</th>
+              <th>管理会社</th>
+              <th>状態</th>
+            </tr>
+          </thead>
           <tbody>
             {contracts.map((contract) => (
               <tr key={contract.id}>
                 <td>{contract.contract_date}</td>
                 <td>{contract.contract_type}</td>
                 <td className="font-semibold">{contract.customer_name}</td>
+                <td>{contract.residence_status}</td>
+                <td>{contract.phone}</td>
                 <td>{contract.property_name}</td>
+                <td>{contract.address}</td>
+                <td>{yen.format(contract.rent)}</td>
                 <td>{yen.format(contract.brokerage_sales)}</td>
                 <td>{yen.format(contract.ad_sales)}</td>
+                <td>{yen.format(contract.refund_or_adjustment)}</td>
+                <td>{contract.management_company}</td>
                 <td><PaymentBadge status={contract.payment_status} /></td>
               </tr>
             ))}
