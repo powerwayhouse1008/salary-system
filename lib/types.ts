@@ -6,6 +6,14 @@ export type OtherIncomeItem = {
   amount: number;
   rate: number;
 };
+export type PaymentItem = {
+  key: string;
+  label: string;
+  expected_amount: number;
+  actual_received_amount: number;
+  payment_status: PaymentStatus;
+  payment_note: string | null;
+};
 
 export type Profile = {
   id: string;
@@ -47,6 +55,7 @@ export type Contract = {
   salary_settlement: number;
   expected_payment_amount: number;
   actual_received_amount: number;
+  payment_items: PaymentItem[] | null;
   payment_status: PaymentStatus;
   payment_confirmed_at: string | null;
   payment_confirmed_by: string | null;

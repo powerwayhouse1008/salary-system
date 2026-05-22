@@ -7,7 +7,7 @@ import { numberValue, textValue } from "@/lib/format";
 import { calculateSalary, defaultFormula } from "@/lib/payroll";
 import { hashPassword } from "@/lib/password";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import type { PaymentStatus } from "@/lib/types";
+import type { PaymentItem, PaymentStatus } from "@/lib/types";
 
 async function requireUser(role?: "admin") {
   const session = await auth();
@@ -37,6 +37,26 @@ function otherIncomeItems(formData: FormData) {
 function isExistingAuthUserError(error: { message?: string } | null) {
   const message = error?.message?.toLowerCase() ?? "";
   return message.includes("already") || message.includes("registered") || message.includes("exists");
+}
+
+const paymentStatuses: PaymentStatus[] = ["未確認", "入金待ち", "一部入金", "入金済み", "返金あり", "キャンセル"];
+
+function paymentStatusValue(value: FormDataEntryValue | null): PaymentStatus {
+  const status = textValue(value);
+  return paymentStatuses.includes(status as PaymentStatus) ? (status as PaymentStatus) : "未確認";
+}
+
+function aggregatePaymentStatus(items: PaymentItem[]): PaymentStatus {
+  const activeItems = items.filter((item) => item.expected_amount > 0 || item.actual_received_amount > 0);
+  if (activeItems.length === 0) return "未確認";
+  if (activeItems.every((item) => item.payment_status === "キャンセル")) return "キャンセル";
+  if (activeItems.some((item) => item.payment_status === "返金あり")) return "返金あり";
+  if (activeItems.every((item) => item.payment_status === "入金済み")) return "入金済み";
+  if (activeItems.some((item) => item.payment_status === "一部入金" || item.actual_received_amount > 0 || item.payment_status === "入金済み")) {
+    return "一部入金";
+  }
+  if (activeItems.some((item) => item.payment_status === "入金待ち")) return "入金待ち";
+  return "未確認";
 }
 
 async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>, email: string) {
@@ -203,6 +223,45 @@ export async function updateContractStatus(formData: FormData) {
     })
     .eq("id", id);
   throwIfSupabaseError(error, "契約状態を保存できませんでした");
+
+  revalidatePath("/admin/contracts");
+}
+
+export async function updateContractPaymentItem(formData: FormData) {
+  await requireUser("admin");
+  const supabase = getSupabaseAdmin();
+  const id = textValue(formData.get("id"));
+  const key = textValue(formData.get("payment_item_key"));
+  const label = textValue(formData.get("payment_item_label"));
+  if (!id || !key || !label) throw new Error("契約IDまたは入金項目がありません。");
+
+  const { data, error: fetchError } = await supabase.from("contracts").select("payment_items").eq("id", id).single();
+  throwIfSupabaseError(fetchError, "入金項目を取得できませんでした");
+
+  const existingItems = Array.isArray(data?.payment_items) ? (data.payment_items as PaymentItem[]) : [];
+  const nextItem: PaymentItem = {
+    key,
+    label,
+    expected_amount: numberValue(formData.get("expected_amount")),
+    actual_received_amount: numberValue(formData.get("actual_received_amount")),
+    payment_status: paymentStatusValue(formData.get("payment_status")),
+    payment_note: textValue(formData.get("payment_note"))
+  };
+  const itemsByKey = new Map(existingItems.map((item) => [item.key, item]));
+  itemsByKey.set(key, nextItem);
+  const paymentItems = Array.from(itemsByKey.values());
+  const actualReceivedAmount = paymentItems.reduce((total, item) => total + Number(item.actual_received_amount ?? 0), 0);
+
+  const { error } = await supabase
+    .from("contracts")
+    .update({
+      payment_items: paymentItems,
+      actual_received_amount: actualReceivedAmount,
+      payment_status: aggregatePaymentStatus(paymentItems),
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", id);
+  throwIfSupabaseError(error, "入金項目を保存できませんでした");
 
   revalidatePath("/admin/contracts");
 }

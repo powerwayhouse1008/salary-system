@@ -1,0 +1,1 @@
+trong 契約入力 của nhân viên sửa　xóa bỏ 契約番号 và  在留資格 thành 契約種類( tr売買・賃貸）　và mục 賃料 thành 賃料・価額　và sửa 銀行入金 thành cy

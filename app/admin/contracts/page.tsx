@@ -1,11 +1,56 @@
-import { confirmPayment, saveContract, updateContractStatus } from "@/app/actions";
+import { saveContract, updateContractPaymentItem } from "@/app/actions";
 import { OtherIncomeFields } from "@/components/other-income-fields";
 import { PaymentBadge } from "@/components/status-badge";
 import { getContracts, getProfiles } from "@/lib/data";
 import { yen } from "@/lib/format";
-import type { PaymentStatus } from "@/lib/types";
+import type { Contract, PaymentItem, PaymentStatus } from "@/lib/types";
 
 const statuses: PaymentStatus[] = ["未確認", "入金待ち", "一部入金", "入金済み", "返金あり", "キャンセル"];
+
+type ContractPaymentLine = Pick<PaymentItem, "key" | "label" | "expected_amount" | "actual_received_amount" | "payment_status" | "payment_note">;
+
+const moneyFields: { key: keyof Contract; label: string }[] = [
+  { key: "rent", label: "賃料" },
+  { key: "bank_deposit", label: "銀行入金" },
+  { key: "withdrawal", label: "出金" },
+  { key: "transfer_fee", label: "振込手数料" },
+  { key: "brokerage_sales", label: "売買売上" },
+  { key: "ad_sales", label: "賃貸売上" },
+  { key: "ad_payment", label: "AD入金" },
+  { key: "refund_or_adjustment", label: "選考(返金等）" },
+  { key: "previous_ad_payment", label: "前のAD入金" },
+  { key: "salary_settlement", label: "給料清算" },
+  { key: "expected_payment_amount", label: "予定入金額" }
+];
+
+function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
+  const savedItems = new Map((contract.payment_items ?? []).map((item) => [item.key, item]));
+  const lines = moneyFields
+    .map(({ key, label }) => {
+      const expectedAmount = Number(contract[key] ?? 0);
+      return mergePaymentItem(savedItems.get(String(key)), String(key), label, expectedAmount);
+    })
+    .filter((item) => item.expected_amount > 0 || item.actual_received_amount > 0 || item.payment_status !== "未確認");
+
+  const otherIncomeLines =
+    contract.other_income_items?.map((item, index) => {
+      const key = `other_income_${index}`;
+      return mergePaymentItem(savedItems.get(key), key, `その他収入: ${item.name || index + 1}`, Number(item.amount ?? 0));
+    }) ?? [];
+
+  return [...lines, ...otherIncomeLines].length ? [...lines, ...otherIncomeLines] : [mergePaymentItem(savedItems.get("expected_payment_amount"), "expected_payment_amount", "予定入金額", contract.expected_payment_amount)];
+}
+
+function mergePaymentItem(savedItem: PaymentItem | undefined, key: string, label: string, expectedAmount: number): ContractPaymentLine {
+  return {
+    key,
+    label,
+    expected_amount: expectedAmount,
+    actual_received_amount: savedItem?.actual_received_amount ?? 0,
+    payment_status: savedItem?.payment_status ?? "未確認",
+    payment_note: savedItem?.payment_note ?? null
+  };
+}
 
 export default async function AdminContractsPage() {
   const [contracts, profiles] = await Promise.all([getContracts(), getProfiles()]);
@@ -29,46 +74,55 @@ export default async function AdminContractsPage() {
       <div className="table-wrap">
         <table className="data-table">
           <thead>
-           <tr><th>契約日</th><th>番号</th><th>契約名前</th><th>担当</th><th>物件</th><th>売買売上</th><th>賃貸売上</th><th>その他収入</th><th>予定</th><th>実入金</th><th>状態</th><th>入金確認</th></tr>
+            <tr>
+              <th>契約日</th>
+              <th>番号</th>
+              <th>契約名前</th>
+              <th>担当</th>
+              <th>物件</th>
+              <th>項目</th>
+              <th>入力金額</th>
+              <th>実入金</th>
+              <th>状態</th>
+              <th>保存</th>
+            </tr>
           </thead>
           <tbody>
-            {contracts.map((contract) => (
-              <tr key={contract.id}>
-                <td>{contract.contract_date}</td>
-                <td>{contract.contract_number}</td>
-                <td className="font-semibold">{contract.customer_name}</td>
-                <td>{contract.profiles?.name}</td>
-                <td>{contract.property_name}</td>
-                <td>{yen.format(contract.brokerage_sales)}</td>
-                <td>{yen.format(contract.ad_sales)}</td>
-                <td>
-                  {contract.other_income_items?.length
-                    ? contract.other_income_items.map((item) => (
-                        <div key={`${contract.id}-${item.name}-${item.amount}-${item.rate}`}>
-                          {item.name}: {yen.format(item.amount)} / {item.rate}%
-                        </div>
-                      ))
-                    : null}
-                </td>
-                <td>{yen.format(contract.expected_payment_amount)}</td>
-                <td>
-                  <form action={confirmPayment} className="flex items-center gap-2">
-                    <input type="hidden" name="id" value={contract.id} />
-                    <input name="actual_received_amount" type="number" defaultValue={contract.actual_received_amount || contract.expected_payment_amount} className="w-28" />
-                    <input name="payment_note" defaultValue={contract.payment_note ?? ""} placeholder="メモ" className="w-28" />
-                    <button className="btn btn-primary" type="submit">入金確認済みにする</button>
-                  </form>
-                </td>
-                <td><PaymentBadge status={contract.payment_status} /></td>
-                <td>
-                  <form action={updateContractStatus} className="flex items-center gap-2">
-                    <input type="hidden" name="id" value={contract.id} />
-                    <select name="payment_status" defaultValue={contract.payment_status}>{statuses.map((s) => <option key={s}>{s}</option>)}</select>
-                    <button className="btn" type="submit">状態保存</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
+            {contracts.flatMap((contract) => {
+              const lines = contractPaymentLines(contract);
+              return lines.map((item, index) => (
+                  <tr key={`${contract.id}-${item.key}`}>
+                    {index === 0 ? (
+                      <>
+                        <td rowSpan={lines.length}>{contract.contract_date}</td>
+                        <td rowSpan={lines.length}>{contract.contract_number}</td>
+                        <td rowSpan={lines.length} className="font-semibold">{contract.customer_name}</td>
+                        <td rowSpan={lines.length}>{contract.profiles?.name}</td>
+                        <td rowSpan={lines.length}>
+                          <div>{contract.property_name}</div>
+                          <div className="mt-2"><PaymentBadge status={contract.payment_status} /></div>
+                        </td>
+                      </>
+                    ) : null}
+                    <td className="font-medium">{item.label}</td>
+                    <td>{yen.format(item.expected_amount)}</td>
+                    <td colSpan={3}>
+                      <form action={updateContractPaymentItem} className="grid min-w-[520px] grid-cols-[120px_150px_1fr_auto] items-center gap-2">
+                        <input type="hidden" name="id" value={contract.id} />
+                        <input type="hidden" name="payment_item_key" value={item.key} />
+                        <input type="hidden" name="payment_item_label" value={item.label} />
+                        <input type="hidden" name="expected_amount" value={item.expected_amount} />
+                        <input name="actual_received_amount" type="number" min="0" step="1" defaultValue={item.actual_received_amount || ""} />
+                        <select name="payment_status" defaultValue={item.payment_status}>
+                          {statuses.map((status) => <option key={status}>{status}</option>)}
+                        </select>
+                        <input name="payment_note" defaultValue={item.payment_note ?? ""} placeholder="メモ" />
+                        <button className="btn btn-primary" type="submit">保存</button>
+                      </form>
+                    </td>
+                  </tr>
+                ));
+            })}
           </tbody>
         </table>
       </div>

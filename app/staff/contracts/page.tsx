@@ -13,7 +13,6 @@ export default async function StaffContractsPage() {
       <h1 className="text-2xl font-bold">契約入力</h1>
       <form action={saveContract} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-4">
         <label className="field">契約日付<input name="contract_date" type="date" /></label>
-        <label className="field">契約番号<input name="contract_number" /></label>
         <label className="field">契約名前<input name="customer_name" /></label>
         <label className="field">在留資格<input name="residence_status" /></label>
         <label className="field">携帯電話<input name="phone" /></label>
@@ -37,12 +36,11 @@ export default async function StaffContractsPage() {
       </form>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>契約日付</th><th>契約番号</th><th>契約名前</th><th>物件名</th><th>売買売上</th><th>賃貸売上</th><th>状態</th></tr></thead>
+          <thead><tr><th>契約日付</th><th>契約名前</th><th>物件名</th><th>売買売上</th><th>賃貸売上</th><th>状態</th></tr></thead>
           <tbody>
             {contracts.map((contract) => (
               <tr key={contract.id}>
                 <td>{contract.contract_date}</td>
-                <td>{contract.contract_number}</td>
                 <td className="font-semibold">{contract.customer_name}</td>
                 <td>{contract.property_name}</td>
                 <td>{yen.format(contract.brokerage_sales)}</td>

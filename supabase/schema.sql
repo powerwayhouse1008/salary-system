@@ -56,6 +56,7 @@ create table if not exists contracts (
   salary_settlement numeric default 0,
   expected_payment_amount numeric default 0,
   actual_received_amount numeric default 0,
+  payment_items jsonb default '[]'::jsonb,
   payment_status text default '未確認' check (payment_status in ('未確認', '入金待ち', '一部入金', '入金済み', '返金あり', 'キャンセル')),
   payment_confirmed_at timestamptz,
   payment_confirmed_by uuid references profiles(id),
@@ -198,6 +199,7 @@ alter table contracts add column if not exists salary_item text;
 alter table contracts add column if not exists salary_settlement numeric default 0;
 alter table contracts add column if not exists expected_payment_amount numeric default 0;
 alter table contracts add column if not exists actual_received_amount numeric default 0;
+alter table contracts add column if not exists payment_items jsonb default '[]'::jsonb;
 alter table contracts add column if not exists payment_status text default '未確認';
 alter table contracts add column if not exists payment_confirmed_by uuid;
 alter table contracts add column if not exists payment_note text;
