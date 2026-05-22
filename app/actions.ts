@@ -224,6 +224,21 @@ export async function deleteContract(formData: FormData) {
   revalidatePath(user.role === "admin" ? "/admin/contracts" : "/staff/contracts");
 }
 
+export async function deleteSelectedContracts(formData: FormData) {
+  await requireUser("admin");
+  const supabase = getSupabaseAdmin();
+  const ids = formData.getAll("selected_contract_id").map((id) => textValue(id)).filter((id): id is string => Boolean(id));
+  if (ids.length === 0) {
+    revalidatePath("/admin/contracts");
+    return;
+  }
+
+  const { error } = await supabase.from("contracts").delete().in("id", ids);
+  throwIfSupabaseError(error, "選択した契約を削除できませんでした");
+
+  revalidatePath("/admin/contracts");
+}
+
 export async function confirmPayment(formData: FormData) {
   const user = await requireUser("admin");
   const supabase = getSupabaseAdmin();

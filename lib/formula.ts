@@ -46,7 +46,9 @@ const parser = new Parser({
   }
 });
 
-const variableTokenEntries = allowedVariables.map((variable, index) => [variable, `v${index}`] as const);
+const variableTokenEntries = allowedVariables
+  .map((variable, index) => [variable, `v${index}`] as const)
+  .sort(([left], [right]) => right.length - left.length);
 const variableTokenMap = new Map<string, string>(variableTokenEntries);
 
 function normalizeFormulaExpression(expression: string) {

@@ -1,4 +1,4 @@
-import { saveContract, updateContractPaymentItems } from "@/app/actions";
+import { deleteSelectedContracts, saveContract, updateContractPaymentItems } from "@/app/actions";
 import { OtherIncomeFields } from "@/components/other-income-fields";
 import { PaymentBadge } from "@/components/status-badge";
 import { getContracts, getProfiles } from "@/lib/data";
@@ -141,6 +141,7 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
         <label className="field">検索<input name="q" defaultValue={params.q ?? ""} placeholder="契約名前・物件名・住所など" /></label>
         <div className="flex items-end gap-2">
           <button className="btn btn-primary" type="submit" form="contract-payment-items-form">保存</button>
+          <button className="btn border-red-200 text-red-700 hover:bg-red-50" type="submit" form="contract-payment-items-form" formAction={deleteSelectedContracts}>選択削除</button>
           <button className="btn btn-primary" type="submit">絞り込み</button>
           <a className="btn" href="/admin/contracts">解除</a>
         </div>
@@ -149,6 +150,8 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
         <table className="data-table">
           <thead>
             <tr>
+              <th>No.</th>
+              <th>選択</th>
               <th>契約日</th>
               <th>種類</th>
               <th>番号</th>
@@ -170,6 +173,10 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
                   <tr key={`${contract.id}-${item.key}`} className={groupStyle}>
                     {index === 0 ? (
                       <>
+                        <td rowSpan={lines.length}>{contractIndex + 1}</td>
+                        <td rowSpan={lines.length}>
+                          <input type="checkbox" name="selected_contract_id" value={contract.id} className="h-4 w-4" />
+                        </td>
                         <td rowSpan={lines.length}>{contract.contract_date}</td>
                         <td rowSpan={lines.length}>{contract.contract_type}</td>
                         <td rowSpan={lines.length}>{contract.contract_number}</td>
