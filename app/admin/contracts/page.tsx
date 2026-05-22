@@ -8,6 +8,15 @@ import type { Contract, PaymentItem, PaymentStatus } from "@/lib/types";
 const statuses: PaymentStatus[] = ["未確認", "入金待ち", "一部入金", "入金済み", "返金あり", "キャンセル"];
 
 type ContractPaymentLine = Pick<PaymentItem, "key" | "label" | "expected_amount" | "actual_received_amount" | "payment_status" | "payment_note">;
+type ContractInfoLine = {
+  kind: "info";
+  key: string;
+  label: string;
+  value: string;
+};
+type ContractManagementLine = (ContractPaymentLine & { kind: "payment" }) | ContractInfoLine;
+
+const contractGroupStyles = ["bg-white", "bg-sky-50/70", "bg-emerald-50/60", "bg-amber-50/60", "bg-rose-50/50", "bg-violet-50/50"];
 
 const moneyFields: { key: keyof Contract; label: string }[] = [
   { key: "rent", label: "賃料" },
@@ -32,6 +41,19 @@ function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
     }) ?? [];
 
   return [...lines, ...otherIncomeLines].length ? [...lines, ...otherIncomeLines] : [mergePaymentItem(savedItems.get("brokerage_sales"), "brokerage_sales", "AD売上", contract.brokerage_sales)];
+}
+
+function contractManagementLines(contract: Contract): ContractManagementLine[] {
+  const infoLines = [
+    { key: "residence_status", label: "在留資格", value: contract.residence_status },
+    { key: "phone", label: "携帯電話", value: contract.phone },
+    { key: "address", label: "住所", value: contract.address },
+    { key: "management_company", label: "管理会社", value: contract.management_company }
+  ]
+    .filter((item): item is { key: string; label: string; value: string } => Boolean(item.value))
+    .map((item) => ({ ...item, kind: "info" as const }));
+
+  return [...infoLines, ...contractPaymentLines(contract).map((item) => ({ ...item, kind: "payment" as const }))];
 }
 
 function mergePaymentItem(savedItem: PaymentItem | undefined, key: string, label: string, expectedAmount: number): ContractPaymentLine {
@@ -88,10 +110,11 @@ export default async function AdminContractsPage() {
             </tr>
           </thead>
           <tbody>
-            {contracts.flatMap((contract) => {
-              const lines = contractPaymentLines(contract);
+            {contracts.flatMap((contract, contractIndex) => {
+              const lines = contractManagementLines(contract);
+              const groupStyle = contractGroupStyles[contractIndex % contractGroupStyles.length];
               return lines.map((item, index) => (
-                  <tr key={`${contract.id}-${item.key}`}>
+                  <tr key={`${contract.id}-${item.key}`} className={groupStyle}>
                     {index === 0 ? (
                       <>
                         <td rowSpan={lines.length}>{contract.contract_date}</td>
@@ -106,21 +129,27 @@ export default async function AdminContractsPage() {
                       </>
                     ) : null}
                     <td className="font-medium">{item.label}</td>
-                    <td>{yen.format(item.expected_amount)}</td>
-                    <td colSpan={3}>
-                      <form action={updateContractPaymentItem} className="grid min-w-[520px] grid-cols-[120px_150px_1fr_auto] items-center gap-2">
-                        <input type="hidden" name="id" value={contract.id} />
-                        <input type="hidden" name="payment_item_key" value={item.key} />
-                        <input type="hidden" name="payment_item_label" value={item.label} />
-                        <input type="hidden" name="expected_amount" value={item.expected_amount} />
-                        <input name="actual_received_amount" type="number" min="0" step="1" defaultValue={item.actual_received_amount || ""} />
-                        <select name="payment_status" defaultValue={item.payment_status}>
-                          {statuses.map((status) => <option key={status}>{status}</option>)}
-                        </select>
-                        <input name="payment_note" defaultValue={item.payment_note ?? ""} placeholder="メモ" />
-                        <button className="btn btn-primary" type="submit">保存</button>
-                      </form>
-                    </td>
+                    {item.kind === "info" ? (
+                      <td colSpan={4} className="text-slate-700">{item.value}</td>
+                    ) : (
+                      <>
+                        <td>{yen.format(item.expected_amount)}</td>
+                        <td colSpan={3}>
+                          <form action={updateContractPaymentItem} className="grid min-w-[520px] grid-cols-[120px_150px_1fr_auto] items-center gap-2">
+                            <input type="hidden" name="id" value={contract.id} />
+                            <input type="hidden" name="payment_item_key" value={item.key} />
+                            <input type="hidden" name="payment_item_label" value={item.label} />
+                            <input type="hidden" name="expected_amount" value={item.expected_amount} />
+                            <input name="actual_received_amount" type="number" min="0" step="1" defaultValue={item.actual_received_amount || ""} />
+                            <select name="payment_status" defaultValue={item.payment_status}>
+                              {statuses.map((status) => <option key={status}>{status}</option>)}
+                            </select>
+                            <input name="payment_note" defaultValue={item.payment_note ?? ""} placeholder="メモ" />
+                            <button className="btn btn-primary" type="submit">保存</button>
+                          </form>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ));
             })}
