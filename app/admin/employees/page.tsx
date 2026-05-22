@@ -67,42 +67,45 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
             </tr>
           </thead>
           <tbody>
-            {employees.map((employee) => (
-              <tr key={employee.id}>
-                <form action={saveEmployee} className="contents">
-                  <input type="hidden" name="id" value={employee.id} />
+            {employees.map((employee) => {
+              const formId = `employee-${employee.id}`;
+              return (
+                <tr key={employee.id}>
                   <td>
-                    <input name="name" defaultValue={employee.name} className="w-40" />
+                    <input form={formId} name="name" defaultValue={employee.name} className="w-40" />
                   </td>
                   <td>
-                    <input name="email" defaultValue={employee.email} className="w-56" />
+                    <input form={formId} name="email" defaultValue={employee.email} className="w-56" />
                   </td>
                   <td>
-                    <input name="password" type="password" placeholder="変更時のみ入力" className="w-40" />
+                    <input form={formId} name="password" type="password" placeholder="変更時のみ入力" className="w-40" />
                   </td>
                   <td>
-                    <select name="role" defaultValue={employee.role}>
+                    <select form={formId} name="role" defaultValue={employee.role}>
                       <option value="staff">staff</option>
                       <option value="admin">admin</option>
                     </select>
                   </td>
                   <td>
-                    <input name="brokerage_commission_rate" type="number" step="0.01" defaultValue={employee.brokerage_commission_rate} className="w-24" />
+                    <input form={formId} name="brokerage_commission_rate" type="number" step="0.01" defaultValue={employee.brokerage_commission_rate} className="w-24" />
                   </td>
                   <td>
-                    <input name="ad_commission_rate" type="number" step="0.01" defaultValue={employee.ad_commission_rate} className="w-24" />
+                    <input form={formId} name="ad_commission_rate" type="number" step="0.01" defaultValue={employee.ad_commission_rate} className="w-24" />
                   </td>
                   <td>
-                    <input name="is_active" type="checkbox" defaultChecked={employee.is_active} className="h-4 w-4" />
+                    <input form={formId} name="is_active" type="checkbox" defaultChecked={employee.is_active} className="h-4 w-4" />
                   </td>
                   <td>
-                    <button className="btn" type="submit">
-                      保存
-                    </button>
+                    <form id={formId} action={saveEmployee}>
+                      <input type="hidden" name="id" value={employee.id} />
+                      <button className="btn" type="submit">
+                        保存
+                      </button>
+                    </form>
                   </td>
-                </form>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -20,6 +20,11 @@ function throwIfSupabaseError(error: { message: string } | null, fallback: strin
   if (error) throw new Error(`${fallback}: ${error.message}`);
 }
 
+function isMissingPaymentItemsColumn(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return message.includes("payment_items") && (message.includes("column") || message.includes("schema cache"));
+}
+
 function otherIncomeItems(formData: FormData) {
   const names = formData.getAll("other_income_name");
   const amounts = formData.getAll("other_income_amount");
@@ -251,6 +256,20 @@ export async function updateContractPaymentItem(formData: FormData) {
   if (!id || !key || !label) throw new Error("契約IDまたは入金項目がありません。");
 
   const { data, error: fetchError } = await supabase.from("contracts").select("payment_items").eq("id", id).single();
+  if (isMissingPaymentItemsColumn(fetchError)) {
+    const { error } = await supabase
+      .from("contracts")
+      .update({
+        actual_received_amount: numberValue(formData.get("actual_received_amount")),
+        payment_status: paymentStatusValue(formData.get("payment_status")),
+        payment_note: textValue(formData.get("payment_note")),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id);
+    throwIfSupabaseError(error, "入金状態を保存できませんでした");
+    revalidatePath("/admin/contracts");
+    return;
+  }
   throwIfSupabaseError(fetchError, "入金項目を取得できませんでした");
 
   const existingItems = Array.isArray(data?.payment_items) ? (data.payment_items as PaymentItem[]) : [];
