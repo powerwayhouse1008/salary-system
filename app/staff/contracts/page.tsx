@@ -25,7 +25,7 @@ export default async function StaffContractsPage() {
         <label className="field">携帯電話<input name="phone" /></label>
         <label className="field">物件名<input name="property_name" /></label>
         <label className="field md:col-span-2">住所<input name="address" /></label>
-        <label className="field">賃料<input name="rent" type="number" /></label>
+        <label className="field">賃料(物件価額）<input name="rent" type="number" /></label>
         <label className="field">AD売上<input name="brokerage_sales" type="number" /></label>
         <label className="field">仲介売上<input name="ad_sales" type="number" /></label>
         <label className="field">選考(返金等）<input name="refund_or_adjustment" type="number" /></label>
@@ -43,7 +43,7 @@ export default async function StaffContractsPage() {
               <th>携帯電話</th>
               <th>物件名</th>
               <th>住所</th>
-              <th>賃料</th>
+              <th>賃料(物件価額）</th>
               <th>AD売上</th>
               <th>仲介売上</th>
               <th>選考(返金等）</th>

@@ -19,7 +19,6 @@ type ContractManagementLine = (ContractPaymentLine & { kind: "payment" }) | Cont
 const contractGroupStyles = ["bg-white", "bg-sky-50/70", "bg-emerald-50/60", "bg-amber-50/60", "bg-rose-50/50", "bg-violet-50/50"];
 
 const moneyFields: { key: keyof Contract; label: string }[] = [
-  { key: "rent", label: "賃料" },
   { key: "brokerage_sales", label: "AD売上" },
   { key: "ad_sales", label: "仲介売上" },
   { key: "refund_or_adjustment", label: "選考(返金等）" }
@@ -48,6 +47,7 @@ function contractManagementLines(contract: Contract): ContractManagementLine[] {
     { key: "residence_status", label: "在留資格", value: contract.residence_status },
     { key: "phone", label: "携帯電話", value: contract.phone },
     { key: "address", label: "住所", value: contract.address },
+    { key: "rent", label: "賃料(物件価額）", value: contract.rent ? yen.format(contract.rent) : null },
     { key: "management_company", label: "管理会社", value: contract.management_company }
   ]
     .filter((item): item is { key: string; label: string; value: string } => Boolean(item.value))
