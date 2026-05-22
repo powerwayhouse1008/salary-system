@@ -64,6 +64,10 @@ function aggregatePaymentStatus(items: PaymentItem[]): PaymentStatus {
   return "未確認";
 }
 
+function paymentConfirmedAt(status: PaymentStatus) {
+  return status === "入金済み" ? new Date().toISOString() : null;
+}
+
 async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>, email: string) {
   const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (error) throw error;
@@ -257,12 +261,14 @@ export async function updateContractPaymentItem(formData: FormData) {
 
   const { data, error: fetchError } = await supabase.from("contracts").select("payment_items").eq("id", id).single();
   if (isMissingPaymentItemsColumn(fetchError)) {
+    const paymentStatus = paymentStatusValue(formData.get("payment_status"));
     const { error } = await supabase
       .from("contracts")
       .update({
         actual_received_amount: numberValue(formData.get("actual_received_amount")),
-        payment_status: paymentStatusValue(formData.get("payment_status")),
+        payment_status: paymentStatus,
         payment_note: textValue(formData.get("payment_note")),
+        payment_confirmed_at: paymentConfirmedAt(paymentStatus),
         updated_at: new Date().toISOString()
       })
       .eq("id", id);
@@ -285,13 +291,15 @@ export async function updateContractPaymentItem(formData: FormData) {
   itemsByKey.set(key, nextItem);
   const paymentItems = Array.from(itemsByKey.values());
   const actualReceivedAmount = paymentItems.reduce((total, item) => total + Number(item.actual_received_amount ?? 0), 0);
+  const paymentStatus = aggregatePaymentStatus(paymentItems);
 
   const { error } = await supabase
     .from("contracts")
     .update({
       payment_items: paymentItems,
       actual_received_amount: actualReceivedAmount,
-      payment_status: aggregatePaymentStatus(paymentItems),
+      payment_status: paymentStatus,
+      payment_confirmed_at: paymentConfirmedAt(paymentStatus),
       updated_at: new Date().toISOString()
     })
     .eq("id", id);

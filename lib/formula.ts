@@ -42,9 +42,14 @@ const parser = new Parser({
   }
 });
 
+function normalizeFormulaExpression(expression: string) {
+  return expression.replaceAll("売買売上合計", "AD売上合計").replaceAll("賃貸売上合計", "仲介売上合計");
+}
+
 export function evaluateFormula(expression: string, context: Partial<FormulaContext>) {
-  if (!expression.trim()) return 0;
-  const parsed = parser.parse(expression);
+  const normalizedExpression = normalizeFormulaExpression(expression);
+  if (!normalizedExpression.trim()) return 0;
+  const parsed = parser.parse(normalizedExpression);
   const variables = parsed.variables();
   const unsupported = variables.filter((variable) => !allowedVariables.includes(variable as FormulaVariable));
 
