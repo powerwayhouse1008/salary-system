@@ -31,8 +31,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const exportRows = salaries.map((row) => ({
     社員: row.profiles?.name ?? row.staff_id,
     対象月: row.target_month,
-    AD売上合計: row.brokerage_sales_total,
-    仲介売上合計: row.ad_sales_total,
+    売買売上合計: row.brokerage_sales_total,
+    賃貸売上合計: row.ad_sales_total,
     その他収入歩合: row.other_income_commission,
     合計: row.total_amount,
     振り込み金額: row.transfer_amount,
@@ -69,8 +69,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
           <section className="table-wrap">
             <table className="data-table">
               <tbody>
-                <tr><th>AD売上合計</th><td>{yen.format(salary?.brokerage_sales_total ?? 0)}</td></tr>
-                <tr><th>仲介売上合計</th><td>{yen.format(salary?.ad_sales_total ?? 0)}</td></tr>
+                <tr><th>売買売上合計</th><td>{yen.format(salary?.brokerage_sales_total ?? 0)}</td></tr>
+                <tr><th>賃貸売上合計</th><td>{yen.format(salary?.ad_sales_total ?? 0)}</td></tr>
                 <tr><th>売買歩合</th><td>{yen.format(salary?.brokerage_commission ?? 0)}</td></tr>
                 <tr><th>賃貸歩合</th><td>{yen.format(salary?.ad_commission ?? 0)}</td></tr>
                 <tr><th>その他収入合計</th><td>{yen.format(salary?.other_income_total ?? 0)}</td></tr>

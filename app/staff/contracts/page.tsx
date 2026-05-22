@@ -15,6 +15,10 @@ function actualPaymentText(contract: Contract, key: string) {
   return amount === null ? "" : yen.format(amount);
 }
 
+function salesLabel(contract: Contract, suffix: string) {
+  return `${contract.contract_type === "賃貸" ? "賃貸" : "売買"}${suffix}`;
+}
+
 export default async function StaffContractsPage() {
   const session = await auth();
   const contracts = await getContracts({ staffId: session?.user.id });
@@ -77,9 +81,9 @@ export default async function StaffContractsPage() {
                 <td>{contract.property_name}</td>
                 <td>{contract.address}</td>
                 <td>{yen.format(contract.rent)}</td>
-                <td>{yen.format(contract.brokerage_sales)}</td>
+                <td><div className="font-medium">{salesLabel(contract, "AD売上")}</div>{yen.format(contract.brokerage_sales)}</td>
                 <td>{actualPaymentText(contract, "brokerage_sales")}</td>
-                <td>{yen.format(contract.ad_sales)}</td>
+                <td><div className="font-medium">{salesLabel(contract, "仲介売上")}</div>{yen.format(contract.ad_sales)}</td>
                 <td>{actualPaymentText(contract, "ad_sales")}</td>
                 <td>{yen.format(contract.refund_or_adjustment)}</td>
                 <td>{actualPaymentText(contract, "refund_or_adjustment")}</td>

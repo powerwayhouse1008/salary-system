@@ -2,7 +2,7 @@ import { evaluateFormula, defaultFormulaContext } from "@/lib/formula";
 import type { Contract, Profile, SalaryFormula, SalaryMonthly } from "@/lib/types";
 
 export const defaultFormula: Record<"formula_total" | "formula_deduction" | "formula_transfer" | "formula_remaining", string> = {
-  formula_total: "AD売上合計 * 売買歩合率 + 仲介売上合計 * 賃貸歩合率 + その他収入歩合 + 前月残り金額",
+  formula_total: "(売買AD売上合計 + 売買仲介売上) * 売買歩合率 + (賃貸AD売上合計 + 賃貸仲介売上) * 賃貸歩合率 + その他収入歩合 + 前月残り金額",
   formula_deduction: "社会保険 + 年金料 + 雇用保険料 + 所得税 + 定期券 + 成約交通費 + IT + 物件管理費用 + 経費領収書 + その他控除",
   formula_transfer: "合計 - 控除合計 + その他支給",
   formula_remaining: "合計 - 控除合計 + その他支給 - 実際振込金額"
@@ -19,8 +19,14 @@ export function calculateSalary(
   draft: DraftSalary,
   formula: Pick<SalaryFormula, "formula_total" | "formula_deduction" | "formula_transfer" | "formula_remaining"> = defaultFormula
 ) {
-  const brokerageSalesTotal = sum(contracts.map((contract) => effectivePaymentAmount(contract, "brokerage_sales", contract.brokerage_sales)));
-  const adSalesTotal = sum(contracts.map((contract) => effectivePaymentAmount(contract, "ad_sales", contract.ad_sales)));
+  const saleContracts = contracts.filter((contract) => contract.contract_type === "売買");
+  const rentalContracts = contracts.filter((contract) => contract.contract_type === "賃貸");
+  const saleAdSalesTotal = sum(saleContracts.map((contract) => effectivePaymentAmount(contract, "brokerage_sales", contract.brokerage_sales)));
+  const saleBrokerageSalesTotal = sum(saleContracts.map((contract) => effectivePaymentAmount(contract, "ad_sales", contract.ad_sales)));
+  const rentalAdSalesTotal = sum(rentalContracts.map((contract) => effectivePaymentAmount(contract, "brokerage_sales", contract.brokerage_sales)));
+  const rentalBrokerageSalesTotal = sum(rentalContracts.map((contract) => effectivePaymentAmount(contract, "ad_sales", contract.ad_sales)));
+  const brokerageSalesTotal = saleAdSalesTotal + saleBrokerageSalesTotal;
+  const adSalesTotal = rentalAdSalesTotal + rentalBrokerageSalesTotal;
   const brokerageRate = Number(staff.brokerage_commission_rate ?? 0) / 100;
   const adRate = Number(staff.ad_commission_rate ?? 0) / 100;
   const brokerageCommission = Math.round(brokerageSalesTotal * brokerageRate);
@@ -37,8 +43,10 @@ export function calculateSalary(
 
   const context = {
     ...defaultFormulaContext(),
-    AD売上合計: brokerageSalesTotal,
-    仲介売上合計: adSalesTotal,
+    売買AD売上合計: saleAdSalesTotal,
+    売買仲介売上: saleBrokerageSalesTotal,
+    賃貸AD売上合計: rentalAdSalesTotal,
+    賃貸仲介売上: rentalBrokerageSalesTotal,
     売買歩合率: brokerageRate,
     賃貸歩合率: adRate,
     その他収入合計: otherIncomeTotal,

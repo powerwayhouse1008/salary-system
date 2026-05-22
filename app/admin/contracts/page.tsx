@@ -24,12 +24,19 @@ const moneyFields: { key: keyof Contract; label: string }[] = [
   { key: "refund_or_adjustment", label: "選考(返金等）" }
 ];
 
+function salesItemLabel(contract: Contract, key: keyof Contract, fallback: string) {
+  const prefix = contract.contract_type === "賃貸" ? "賃貸" : "売買";
+  if (key === "brokerage_sales") return `${prefix}AD売上`;
+  if (key === "ad_sales") return `${prefix}仲介売上`;
+  return fallback;
+}
+
 function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
   const savedItems = new Map((contract.payment_items ?? []).map((item) => [item.key, item]));
   const lines = moneyFields
     .map(({ key, label }) => {
       const expectedAmount = Number(contract[key] ?? 0);
-      return mergePaymentItem(savedItems.get(String(key)), String(key), label, expectedAmount);
+      return mergePaymentItem(savedItems.get(String(key)), String(key), salesItemLabel(contract, key, label), expectedAmount);
     })
     .filter((item) => item.expected_amount > 0 || (item.actual_received_amount ?? 0) > 0 || item.payment_status !== "未確認");
 
@@ -41,7 +48,7 @@ function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
 
   return [...lines, ...otherIncomeLines].length
     ? [...lines, ...otherIncomeLines]
-    : [mergePaymentItem(savedItems.get("brokerage_sales"), "brokerage_sales", "AD売上", contract.brokerage_sales)];
+    : [mergePaymentItem(savedItems.get("brokerage_sales"), "brokerage_sales", salesItemLabel(contract, "brokerage_sales", "AD売上"), contract.brokerage_sales)];
 }
 
 function contractManagementLines(contract: Contract): ContractManagementLine[] {
