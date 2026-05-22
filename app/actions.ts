@@ -20,11 +20,6 @@ function throwIfSupabaseError(error: { message: string } | null, fallback: strin
   if (error) throw new Error(`${fallback}: ${error.message}`);
 }
 
-function isMissingPaymentItemsColumn(error: { message?: string } | null) {
-  const message = error?.message?.toLowerCase() ?? "";
-  return message.includes("payment_items") && (message.includes("column") || message.includes("schema cache"));
-}
-
 function otherIncomeItems(formData: FormData) {
   const names = formData.getAll("other_income_name");
   const amounts = formData.getAll("other_income_amount");
@@ -66,6 +61,10 @@ function aggregatePaymentStatus(items: PaymentItem[]): PaymentStatus {
 
 function paymentConfirmedAt(status: PaymentStatus) {
   return status === "入金済み" ? new Date().toISOString() : null;
+}
+
+function nullableNumberValue(value: FormDataEntryValue | null) {
+  return textValue(value) === null ? null : numberValue(value);
 }
 
 async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>, email: string) {
@@ -260,22 +259,6 @@ export async function updateContractPaymentItem(formData: FormData) {
   if (!id || !key || !label) throw new Error("契約IDまたは入金項目がありません。");
 
   const { data, error: fetchError } = await supabase.from("contracts").select("payment_items").eq("id", id).single();
-  if (isMissingPaymentItemsColumn(fetchError)) {
-    const paymentStatus = paymentStatusValue(formData.get("payment_status"));
-    const { error } = await supabase
-      .from("contracts")
-      .update({
-        actual_received_amount: numberValue(formData.get("actual_received_amount")),
-        payment_status: paymentStatus,
-        payment_note: textValue(formData.get("payment_note")),
-        payment_confirmed_at: paymentConfirmedAt(paymentStatus),
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", id);
-    throwIfSupabaseError(error, "入金状態を保存できませんでした");
-    revalidatePath("/admin/contracts");
-    return;
-  }
   throwIfSupabaseError(fetchError, "入金項目を取得できませんでした");
 
   const existingItems = Array.isArray(data?.payment_items) ? (data.payment_items as PaymentItem[]) : [];
@@ -283,14 +266,14 @@ export async function updateContractPaymentItem(formData: FormData) {
     key,
     label,
     expected_amount: numberValue(formData.get("expected_amount")),
-    actual_received_amount: numberValue(formData.get("actual_received_amount")),
+    actual_received_amount: nullableNumberValue(formData.get("actual_received_amount")),
     payment_status: paymentStatusValue(formData.get("payment_status")),
     payment_note: textValue(formData.get("payment_note"))
   };
   const itemsByKey = new Map(existingItems.map((item) => [item.key, item]));
   itemsByKey.set(key, nextItem);
   const paymentItems = Array.from(itemsByKey.values());
-  const actualReceivedAmount = paymentItems.reduce((total, item) => total + Number(item.actual_received_amount ?? 0), 0);
+  const actualReceivedAmount = paymentItems.reduce((total, item) => total + Number(item.actual_received_amount ?? item.expected_amount ?? 0), 0);
   const paymentStatus = aggregatePaymentStatus(paymentItems);
 
   const { error } = await supabase

@@ -3,6 +3,17 @@ import { auth } from "@/auth";
 import { PaymentBadge } from "@/components/status-badge";
 import { getContracts } from "@/lib/data";
 import { yen } from "@/lib/format";
+import type { Contract } from "@/lib/types";
+
+function actualPayment(contract: Contract, key: string) {
+  const item = contract.payment_items?.find((paymentItem) => paymentItem.key === key);
+  return item?.actual_received_amount ?? null;
+}
+
+function actualPaymentText(contract: Contract, key: string) {
+  const amount = actualPayment(contract, key);
+  return amount === null ? "" : yen.format(amount);
+}
 
 export default async function StaffContractsPage() {
   const session = await auth();
@@ -45,8 +56,11 @@ export default async function StaffContractsPage() {
               <th>住所</th>
               <th>賃料(物件価額）</th>
               <th>AD売上</th>
+              <th>AD実入金</th>
               <th>仲介売上</th>
+              <th>仲介実入金</th>
               <th>選考(返金等）</th>
+              <th>選考実入金</th>
               <th>管理会社</th>
               <th>状態</th>
               <th>削除</th>
@@ -64,8 +78,11 @@ export default async function StaffContractsPage() {
                 <td>{contract.address}</td>
                 <td>{yen.format(contract.rent)}</td>
                 <td>{yen.format(contract.brokerage_sales)}</td>
+                <td>{actualPaymentText(contract, "brokerage_sales")}</td>
                 <td>{yen.format(contract.ad_sales)}</td>
+                <td>{actualPaymentText(contract, "ad_sales")}</td>
                 <td>{yen.format(contract.refund_or_adjustment)}</td>
+                <td>{actualPaymentText(contract, "refund_or_adjustment")}</td>
                 <td>{contract.management_company}</td>
                 <td><PaymentBadge status={contract.payment_status} /></td>
                 <td>

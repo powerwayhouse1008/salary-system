@@ -19,13 +19,19 @@ export function calculateSalary(
   draft: DraftSalary,
   formula: Pick<SalaryFormula, "formula_total" | "formula_deduction" | "formula_transfer" | "formula_remaining"> = defaultFormula
 ) {
-  const brokerageSalesTotal = sum(contracts.map((contract) => contract.brokerage_sales));
-  const adSalesTotal = sum(contracts.map((contract) => contract.ad_sales));
+  const brokerageSalesTotal = sum(contracts.map((contract) => effectivePaymentAmount(contract, "brokerage_sales", contract.brokerage_sales)));
+  const adSalesTotal = sum(contracts.map((contract) => effectivePaymentAmount(contract, "ad_sales", contract.ad_sales)));
   const brokerageRate = Number(staff.brokerage_commission_rate ?? 0) / 100;
   const adRate = Number(staff.ad_commission_rate ?? 0) / 100;
   const brokerageCommission = Math.round(brokerageSalesTotal * brokerageRate);
   const adCommission = Math.round(adSalesTotal * adRate);
-  const otherIncomeItems = [...contracts.flatMap((contract) => contract.other_income_items ?? []), ...(draft.other_income_items ?? [])];
+  const contractOtherIncomeItems = contracts.flatMap((contract) =>
+    (contract.other_income_items ?? []).map((item, index) => ({
+      ...item,
+      amount: effectivePaymentAmount(contract, `other_income_${index}`, item.amount)
+    }))
+  );
+  const otherIncomeItems = [...contractOtherIncomeItems, ...(draft.other_income_items ?? [])];
   const otherIncomeTotal = sum(otherIncomeItems.map((item) => item.amount));
   const otherIncomeCommission = sum(otherIncomeItems.map((item) => item.amount * (Number(item.rate ?? 0) / 100)));
 
@@ -86,4 +92,9 @@ export function calculateSalary(
 
 function sum(values: number[]) {
   return Math.round(values.reduce((total, value) => total + Number(value ?? 0), 0));
+}
+
+function effectivePaymentAmount(contract: Contract, key: string, fallback: number) {
+  const item = contract.payment_items?.find((paymentItem) => paymentItem.key === key);
+  return Number(item?.actual_received_amount ?? fallback ?? 0);
 }
