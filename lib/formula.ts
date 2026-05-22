@@ -1,8 +1,10 @@
 import { Parser } from "expr-eval";
 
 const allowedVariables = [
-  "AD売上合計",
-  "仲介売上合計",
+  "売買AD売上合計",
+  "売買仲介売上",
+  "賃貸AD売上合計",
+  "賃貸仲介売上",
   "売買歩合率",
   "賃貸歩合率",
   "前月残り金額",
@@ -43,7 +45,12 @@ const parser = new Parser({
 });
 
 function normalizeFormulaExpression(expression: string) {
-  return expression.replaceAll("売買売上合計", "AD売上合計").replaceAll("賃貸売上合計", "仲介売上合計");
+  return expression
+    .replaceAll("AD売上合計 * 売買歩合率 + 仲介売上合計 * 賃貸歩合率", "(売買AD売上合計 + 売買仲介売上) * 売買歩合率 + (賃貸AD売上合計 + 賃貸仲介売上) * 賃貸歩合率")
+    .replaceAll("売買売上合計", "(売買AD売上合計 + 売買仲介売上)")
+    .replaceAll("賃貸売上合計", "(賃貸AD売上合計 + 賃貸仲介売上)")
+    .replaceAll("AD売上合計", "(売買AD売上合計 + 賃貸AD売上合計)")
+    .replaceAll("仲介売上合計", "(売買仲介売上 + 賃貸仲介売上)");
 }
 
 export function evaluateFormula(expression: string, context: Partial<FormulaContext>) {
