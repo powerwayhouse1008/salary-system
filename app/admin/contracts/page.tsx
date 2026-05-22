@@ -31,7 +31,7 @@ function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
       const expectedAmount = Number(contract[key] ?? 0);
       return mergePaymentItem(savedItems.get(String(key)), String(key), label, expectedAmount);
     })
-    .filter((item) => item.expected_amount > 0 || item.actual_received_amount > 0 || item.payment_status !== "未確認");
+    .filter((item) => item.expected_amount > 0 || (item.actual_received_amount ?? 0) > 0 || item.payment_status !== "未確認");
 
   const otherIncomeLines =
     contract.other_income_items?.map((item, index) => {
