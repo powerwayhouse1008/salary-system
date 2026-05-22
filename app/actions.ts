@@ -361,7 +361,7 @@ export async function recalculateSalary(formData: FormData) {
     if (!/^\d{4}-\d{2}$/.test(targetMonth)) throw new Error("対象月の形式が正しくありません。");
     const [staffResult, formulaResult, contractsResult] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", staffId).single(),
-      supabase.from("salary_formulas").select("*").eq("is_default", true).maybeSingle(),
+      supabase.from("salary_formulas").select("*").eq("is_default", true).order("updated_at", { ascending: false }).limit(1),
       supabase
         .from("contracts")
         .select("*")
@@ -395,7 +395,8 @@ export async function recalculateSalary(formData: FormData) {
       actual_transfer_amount: numberValue(formData.get("actual_transfer_amount"))
     };
 
-    const totals = calculateSalary(staffResult.data, contractsResult.data ?? [], draft, formulaResult.data ?? defaultFormula);
+    const formula = Array.isArray(formulaResult.data) ? formulaResult.data[0] : null;
+    const totals = calculateSalary(staffResult.data, contractsResult.data ?? [], draft, formula ?? defaultFormula);
     const payload = {
       ...draft,
       ...totals,
