@@ -7,6 +7,7 @@ const allowedVariables = [
   "賃貸仲介売上",
   "売買歩合率",
   "賃貸歩合率",
+  "その他収入合計",
   "前月残り金額",
   "社会保険",
   "年金料",
@@ -46,11 +47,19 @@ const parser = new Parser({
 
 function normalizeFormulaExpression(expression: string) {
   return expression
-    .replaceAll("AD売上合計 * 売買歩合率 + 仲介売上合計 * 賃貸歩合率", "(売買AD売上合計 + 売買仲介売上) * 売買歩合率 + (賃貸AD売上合計 + 賃貸仲介売上) * 賃貸歩合率")
+    .replaceAll("売買AD売上合計", "__SALE_AD__")
+    .replaceAll("売買仲介売上", "__SALE_BROKERAGE__")
+    .replaceAll("賃貸AD売上合計", "__RENTAL_AD__")
+    .replaceAll("賃貸仲介売上", "__RENTAL_BROKERAGE__")
+    .replaceAll("AD売上合計 * 売買歩合率 + 仲介売上合計 * 賃貸歩合率", "(__SALE_AD__ + __SALE_BROKERAGE__) * 売買歩合率 + (__RENTAL_AD__ + __RENTAL_BROKERAGE__) * 賃貸歩合率")
     .replaceAll("売買売上合計", "(売買AD売上合計 + 売買仲介売上)")
     .replaceAll("賃貸売上合計", "(賃貸AD売上合計 + 賃貸仲介売上)")
     .replaceAll("AD売上合計", "(売買AD売上合計 + 賃貸AD売上合計)")
-    .replaceAll("仲介売上合計", "(売買仲介売上 + 賃貸仲介売上)");
+    .replaceAll("仲介売上合計", "(売買仲介売上 + 賃貸仲介売上)")
+    .replaceAll("__SALE_AD__", "売買AD売上合計")
+    .replaceAll("__SALE_BROKERAGE__", "売買仲介売上")
+    .replaceAll("__RENTAL_AD__", "賃貸AD売上合計")
+    .replaceAll("__RENTAL_BROKERAGE__", "賃貸仲介売上");
 }
 
 export function evaluateFormula(expression: string, context: Partial<FormulaContext>) {

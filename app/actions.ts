@@ -20,6 +20,21 @@ function throwIfSupabaseError(error: { message: string } | null, fallback: strin
   if (error) throw new Error(`${fallback}: ${error.message}`);
 }
 
+function isMissingPaymentItemsColumn(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return message.includes("payment_items") && (message.includes("column") || message.includes("schema cache"));
+}
+
+function salaryErrorRedirect(error: unknown, targetMonth: string | null, staffId: string | null): never {
+  console.error("recalculateSalary failed", error);
+  const message = error instanceof Error ? error.message : "給与を保存できませんでした。";
+  const params = new URLSearchParams();
+  if (targetMonth) params.set("month", targetMonth);
+  if (staffId) params.set("staff", staffId);
+  params.set("error", message);
+  redirect(`/admin/salaries?${params.toString()}`);
+}
+
 function otherIncomeItems(formData: FormData) {
   const names = formData.getAll("other_income_name");
   const amounts = formData.getAll("other_income_amount");
@@ -259,6 +274,22 @@ export async function updateContractPaymentItem(formData: FormData) {
   if (!id || !key || !label) throw new Error("契約IDまたは入金項目がありません。");
 
   const { data, error: fetchError } = await supabase.from("contracts").select("payment_items").eq("id", id).single();
+  if (isMissingPaymentItemsColumn(fetchError)) {
+    const paymentStatus = paymentStatusValue(formData.get("payment_status"));
+    const { error } = await supabase
+      .from("contracts")
+      .update({
+        actual_received_amount: numberValue(formData.get("actual_received_amount")),
+        payment_status: paymentStatus,
+        payment_note: textValue(formData.get("payment_note")),
+        payment_confirmed_at: paymentStatus === "入金済み" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id);
+    throwIfSupabaseError(error, "入金状態を保存できませんでした");
+    revalidatePath("/admin/contracts");
+    return;
+  }
   throwIfSupabaseError(fetchError, "入金項目を取得できませんでした");
 
   const existingItems = Array.isArray(data?.payment_items) ? (data.payment_items as PaymentItem[]) : [];
@@ -325,57 +356,62 @@ export async function recalculateSalary(formData: FormData) {
   const supabase = getSupabaseAdmin();
   const staffId = textValue(formData.get("staff_id"));
   const targetMonth = textValue(formData.get("target_month"));
-  if (!staffId || !targetMonth) throw new Error("社員と対象月を選択してください。");
-  if (!/^\d{4}-\d{2}$/.test(targetMonth)) throw new Error("対象月の形式が正しくありません。");
-  const [{ data: staff }, { data: formula }, { data: contracts }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", staffId).single(),
-    supabase.from("salary_formulas").select("*").eq("is_default", true).maybeSingle(),
-    supabase
-      .from("contracts")
-      .select("*")
-      .eq("staff_id", staffId)
-      .in("payment_status", ["入金済み", "一部入金"])
-      .gte("payment_confirmed_at", `${targetMonth}-01`)
-      .lt("payment_confirmed_at", nextMonth(targetMonth))
-  ]);
+  try {
+    if (!staffId || !targetMonth) throw new Error("社員と対象月を選択してください。");
+    if (!/^\d{4}-\d{2}$/.test(targetMonth)) throw new Error("対象月の形式が正しくありません。");
+    const [staffResult, formulaResult, contractsResult] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", staffId).single(),
+      supabase.from("salary_formulas").select("*").eq("is_default", true).maybeSingle(),
+      supabase
+        .from("contracts")
+        .select("*")
+        .eq("staff_id", staffId)
+        .in("payment_status", ["入金済み", "一部入金"])
+        .gte("payment_confirmed_at", `${targetMonth}-01`)
+        .lt("payment_confirmed_at", nextMonth(targetMonth))
+    ]);
+    throwIfSupabaseError(staffResult.error, "社員を取得できませんでした");
+    throwIfSupabaseError(formulaResult.error, "計算式を取得できませんでした");
+    throwIfSupabaseError(contractsResult.error, "契約を取得できませんでした");
 
-  if (!staff) throw new Error("社員が見つかりません。");
+    if (!staffResult.data) throw new Error("社員が見つかりません。");
 
-  const draft = {
-    staff_id: staffId,
-    target_month: targetMonth,
-    social_insurance: numberValue(formData.get("social_insurance")),
-    pension: numberValue(formData.get("pension")),
-    employment_insurance: numberValue(formData.get("employment_insurance")),
-    income_tax: numberValue(formData.get("income_tax")),
-    commuter_pass: numberValue(formData.get("commuter_pass")),
-    contract_transportation: numberValue(formData.get("contract_transportation")),
-    it_cost: numberValue(formData.get("it_cost")),
-    property_management_cost: numberValue(formData.get("property_management_cost")),
-    previous_remaining_amount: numberValue(formData.get("previous_remaining_amount")),
-    expense_receipts: numberValue(formData.get("expense_receipts")),
-    other_deduction: numberValue(formData.get("other_deduction")),
-    other_payment: numberValue(formData.get("other_payment")),
-    other_income_items: otherIncomeItems(formData),
-    actual_transfer_amount: numberValue(formData.get("actual_transfer_amount"))
-  };
+    const draft = {
+      staff_id: staffId,
+      target_month: targetMonth,
+      social_insurance: numberValue(formData.get("social_insurance")),
+      pension: numberValue(formData.get("pension")),
+      employment_insurance: numberValue(formData.get("employment_insurance")),
+      income_tax: numberValue(formData.get("income_tax")),
+      commuter_pass: numberValue(formData.get("commuter_pass")),
+      contract_transportation: numberValue(formData.get("contract_transportation")),
+      it_cost: numberValue(formData.get("it_cost")),
+      property_management_cost: numberValue(formData.get("property_management_cost")),
+      previous_remaining_amount: numberValue(formData.get("previous_remaining_amount")),
+      expense_receipts: numberValue(formData.get("expense_receipts")),
+      other_deduction: numberValue(formData.get("other_deduction")),
+      other_payment: numberValue(formData.get("other_payment")),
+      other_income_items: otherIncomeItems(formData),
+      actual_transfer_amount: numberValue(formData.get("actual_transfer_amount"))
+    };
 
-  const totals = calculateSalary(staff, contracts ?? [], draft, formula ?? defaultFormula);
-  const { error } = await supabase.from("salary_monthly").upsert(
-    {
+    const totals = calculateSalary(staffResult.data, contractsResult.data ?? [], draft, formulaResult.data ?? defaultFormula);
+    const payload = {
       ...draft,
       ...totals,
       status: textValue(formData.get("status")) ?? "下書き",
       confirmed_at: formData.get("status") === "確定" ? new Date().toISOString() : null,
       confirmed_by: formData.get("status") === "確定" ? user.id : null,
       updated_at: new Date().toISOString()
-    },
-    { onConflict: "staff_id,target_month" }
-  );
-  throwIfSupabaseError(error, "給与を保存できませんでした");
+    };
+    const { error } = await supabase.from("salary_monthly").upsert(payload, { onConflict: "staff_id,target_month" });
+    throwIfSupabaseError(error, "給与を保存できませんでした");
 
-  revalidatePath("/admin/salaries");
-  revalidatePath("/staff/salary");
+    revalidatePath("/admin/salaries");
+    revalidatePath("/staff/salary");
+  } catch (error) {
+    salaryErrorRedirect(error, targetMonth, staffId);
+  }
 }
 
 function nextMonth(targetMonth: string) {
