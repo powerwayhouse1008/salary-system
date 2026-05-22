@@ -10,7 +10,7 @@ export type PaymentItem = {
   key: string;
   label: string;
   expected_amount: number;
-  actual_received_amount: number;
+  actual_received_amount: number | null;
   payment_status: PaymentStatus;
   payment_note: string | null;
 };
