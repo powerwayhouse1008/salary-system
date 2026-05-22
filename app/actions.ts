@@ -268,6 +268,7 @@ export async function confirmPayment(formData: FormData) {
   throwIfSupabaseError(error, "入金確認を保存できませんでした");
 
   revalidatePath("/admin/contracts");
+  revalidateSalaryPages();
 }
 
 export async function updateContractStatus(formData: FormData) {
@@ -287,6 +288,7 @@ export async function updateContractStatus(formData: FormData) {
   throwIfSupabaseError(error, "契約状態を保存できませんでした");
 
   revalidatePath("/admin/contracts");
+  revalidateSalaryPages();
 }
 
 export async function updateContractPaymentItem(formData: FormData) {
@@ -345,6 +347,7 @@ export async function updateContractPaymentItem(formData: FormData) {
   throwIfSupabaseError(error, "入金項目を保存できませんでした");
 
   revalidatePath("/admin/contracts");
+  revalidateSalaryPages();
 }
 
 export async function updateContractPaymentItems(formData: FormData) {
@@ -403,6 +406,7 @@ export async function updateContractPaymentItems(formData: FormData) {
       })
     );
     revalidatePath("/admin/contracts");
+    revalidateSalaryPages();
     return;
   }
   throwIfSupabaseError(fetchError, "入金項目を取得できませんでした");

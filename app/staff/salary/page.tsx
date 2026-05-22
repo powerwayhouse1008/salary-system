@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { SalaryBadge } from "@/components/status-badge";
 import { getSalaries } from "@/lib/data";
 import { yen } from "@/lib/format";
@@ -12,6 +13,7 @@ export default async function StaffSalaryPage() {
 
   return (
     <div className="space-y-6">
+      <AutoRefresh />
       <h1 className="text-2xl font-bold">給与確認</h1>
       <div className="table-wrap">
         <table className="data-table">
