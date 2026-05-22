@@ -322,6 +322,97 @@ export async function updateContractPaymentItem(formData: FormData) {
   revalidatePath("/admin/contracts");
 }
 
+export async function updateContractPaymentItems(formData: FormData) {
+  await requireUser("admin");
+  const supabase = getSupabaseAdmin();
+  const contractIds = formData.getAll("contract_id");
+  const keys = formData.getAll("payment_item_key");
+  const labels = formData.getAll("payment_item_label");
+  const expectedAmounts = formData.getAll("expected_amount");
+  const actualAmounts = formData.getAll("actual_received_amount");
+  const statuses = formData.getAll("payment_status");
+  const notes = formData.getAll("payment_note");
+
+  const itemsByContractId = new Map<string, PaymentItem[]>();
+  keys.forEach((rawKey, index) => {
+    const contractId = textValue(contractIds[index] ?? null);
+    const key = textValue(rawKey);
+    const label = textValue(labels[index] ?? null);
+    if (!contractId || !key || !label) return;
+
+    const item: PaymentItem = {
+      key,
+      label,
+      expected_amount: numberValue(expectedAmounts[index] ?? null),
+      actual_received_amount: nullableNumberValue(actualAmounts[index] ?? null),
+      payment_status: paymentStatusValue(statuses[index] ?? null),
+      payment_note: textValue(notes[index] ?? null)
+    };
+    itemsByContractId.set(contractId, [...(itemsByContractId.get(contractId) ?? []), item]);
+  });
+
+  const ids = Array.from(itemsByContractId.keys());
+  if (ids.length === 0) {
+    revalidatePath("/admin/contracts");
+    return;
+  }
+
+  const { data, error: fetchError } = await supabase.from("contracts").select("id,payment_items").in("id", ids);
+  if (isMissingPaymentItemsColumn(fetchError)) {
+    await Promise.all(
+      ids.map((id) => {
+        const submittedItems = itemsByContractId.get(id) ?? [];
+        const actualReceivedAmount = submittedItems.reduce((total, item) => total + Number(item.actual_received_amount ?? item.expected_amount ?? 0), 0);
+        const paymentStatus = aggregatePaymentStatus(submittedItems);
+        return supabase
+          .from("contracts")
+          .update({
+            actual_received_amount: actualReceivedAmount,
+            payment_status: paymentStatus,
+            payment_note: submittedItems.find((item) => item.payment_note)?.payment_note ?? null,
+            payment_confirmed_at: paymentItemsConfirmedAt(submittedItems),
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", id);
+      })
+    );
+    revalidatePath("/admin/contracts");
+    return;
+  }
+  throwIfSupabaseError(fetchError, "入金項目を取得できませんでした");
+
+  const existingItemsByContractId = new Map(
+    (data ?? []).map((contract) => [
+      contract.id,
+      Array.isArray(contract.payment_items) ? (contract.payment_items as PaymentItem[]) : []
+    ])
+  );
+
+  const updateResults = await Promise.all(
+    ids.map((id) => {
+      const itemsByKey = new Map((existingItemsByContractId.get(id) ?? []).map((item) => [item.key, item]));
+      (itemsByContractId.get(id) ?? []).forEach((item) => itemsByKey.set(item.key, item));
+      const paymentItems = Array.from(itemsByKey.values());
+      const actualReceivedAmount = paymentItems.reduce((total, item) => total + Number(item.actual_received_amount ?? item.expected_amount ?? 0), 0);
+      const paymentStatus = aggregatePaymentStatus(paymentItems);
+
+      return supabase
+        .from("contracts")
+        .update({
+          payment_items: paymentItems,
+          actual_received_amount: actualReceivedAmount,
+          payment_status: paymentStatus,
+          payment_confirmed_at: paymentItemsConfirmedAt(paymentItems),
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", id);
+    })
+  );
+
+  updateResults.forEach((result) => throwIfSupabaseError(result.error, "入金項目を保存できませんでした"));
+  revalidatePath("/admin/contracts");
+}
+
 export async function saveFormula(formData: FormData) {
   await requireUser("admin");
   const supabase = getSupabaseAdmin();

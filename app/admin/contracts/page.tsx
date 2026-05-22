@@ -1,4 +1,4 @@
-import { saveContract, updateContractPaymentItem } from "@/app/actions";
+import { saveContract, updateContractPaymentItems } from "@/app/actions";
 import { OtherIncomeFields } from "@/components/other-income-fields";
 import { PaymentBadge } from "@/components/status-badge";
 import { getContracts, getProfiles } from "@/lib/data";
@@ -140,11 +140,12 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
         </label>
         <label className="field">検索<input name="q" defaultValue={params.q ?? ""} placeholder="契約名前・物件名・住所など" /></label>
         <div className="flex items-end gap-2">
+          <button className="btn btn-primary" type="submit" form="contract-payment-items-form">保存</button>
           <button className="btn btn-primary" type="submit">絞り込み</button>
           <a className="btn" href="/admin/contracts">解除</a>
         </div>
       </form>
-      <div className="table-wrap">
+      <form id="contract-payment-items-form" action={updateContractPaymentItems} className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
@@ -187,8 +188,8 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
                       <>
                         <td>{yen.format(item.expected_amount)}</td>
                         <td colSpan={3}>
-                          <form action={updateContractPaymentItem} className="grid min-w-[520px] grid-cols-[120px_150px_1fr_auto] items-center gap-2">
-                            <input type="hidden" name="id" value={contract.id} />
+                          <div className="grid min-w-[520px] grid-cols-[120px_150px_1fr_auto] items-center gap-2">
+                            <input type="hidden" name="contract_id" value={contract.id} />
                             <input type="hidden" name="payment_item_key" value={item.key} />
                             <input type="hidden" name="payment_item_label" value={item.label} />
                             <input type="hidden" name="expected_amount" value={item.expected_amount} />
@@ -198,7 +199,7 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
                             </select>
                             <input name="payment_note" defaultValue={item.payment_note ?? ""} placeholder="メモ" />
                             <button className="btn btn-primary" type="submit">保存</button>
-                          </form>
+                          </div>
                         </td>
                       </>
                     )}
@@ -207,7 +208,7 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
             })}
           </tbody>
         </table>
-      </div>
+      </form>
     </div>
   );
 }
