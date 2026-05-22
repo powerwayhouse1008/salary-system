@@ -26,20 +26,23 @@ const moneyFields: { key: keyof Contract; label: string }[] = [
 
 function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
   const savedItems = new Map((contract.payment_items ?? []).map((item) => [item.key, item]));
+  const hasSavedPaymentItems = savedItems.size > 0;
   const lines = moneyFields
     .map(({ key, label }) => {
       const expectedAmount = Number(contract[key] ?? 0);
-      return mergePaymentItem(savedItems.get(String(key)), String(key), label, expectedAmount);
+      return mergePaymentItem(savedItems.get(String(key)), String(key), label, expectedAmount, hasSavedPaymentItems ? null : contract);
     })
     .filter((item) => item.expected_amount > 0 || item.actual_received_amount > 0 || item.payment_status !== "未確認");
 
   const otherIncomeLines =
     contract.other_income_items?.map((item, index) => {
       const key = `other_income_${index}`;
-      return mergePaymentItem(savedItems.get(key), key, `その他収入: ${item.name || index + 1}`, Number(item.amount ?? 0));
+      return mergePaymentItem(savedItems.get(key), key, `その他収入: ${item.name || index + 1}`, Number(item.amount ?? 0), hasSavedPaymentItems ? null : contract);
     }) ?? [];
 
-  return [...lines, ...otherIncomeLines].length ? [...lines, ...otherIncomeLines] : [mergePaymentItem(savedItems.get("brokerage_sales"), "brokerage_sales", "AD売上", contract.brokerage_sales)];
+  return [...lines, ...otherIncomeLines].length
+    ? [...lines, ...otherIncomeLines]
+    : [mergePaymentItem(savedItems.get("brokerage_sales"), "brokerage_sales", "AD売上", contract.brokerage_sales, hasSavedPaymentItems ? null : contract)];
 }
 
 function contractManagementLines(contract: Contract): ContractManagementLine[] {
@@ -56,14 +59,14 @@ function contractManagementLines(contract: Contract): ContractManagementLine[] {
   return [...infoLines, ...contractPaymentLines(contract).map((item) => ({ ...item, kind: "payment" as const }))];
 }
 
-function mergePaymentItem(savedItem: PaymentItem | undefined, key: string, label: string, expectedAmount: number): ContractPaymentLine {
+function mergePaymentItem(savedItem: PaymentItem | undefined, key: string, label: string, expectedAmount: number, contractFallback?: Contract | null): ContractPaymentLine {
   return {
     key,
     label,
     expected_amount: expectedAmount,
-    actual_received_amount: savedItem?.actual_received_amount ?? 0,
-    payment_status: savedItem?.payment_status ?? "未確認",
-    payment_note: savedItem?.payment_note ?? null
+    actual_received_amount: savedItem?.actual_received_amount ?? contractFallback?.actual_received_amount ?? 0,
+    payment_status: savedItem?.payment_status ?? contractFallback?.payment_status ?? "未確認",
+    payment_note: savedItem?.payment_note ?? contractFallback?.payment_note ?? null
   };
 }
 
