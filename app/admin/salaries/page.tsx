@@ -55,9 +55,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
         <label className="field">対象月<input type="month" name="month" defaultValue={targetMonth} /></label>
         <label className="field">社員<select name="staff" defaultValue={selectedStaff}>{profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
         <button className="btn" type="submit">表示</button>
+        {selectedStaff ? <button className="btn btn-primary" type="submit" form="salary-edit-form">保存</button> : null}
       </form>
       {selectedStaff ? (
-        <form action={recalculateSalary} className="grid gap-4 rounded-lg border border-line bg-white p-4 lg:grid-cols-[360px_1fr]">
+        <form id="salary-edit-form" action={recalculateSalary} className="grid gap-4 rounded-lg border border-line bg-white p-4 lg:grid-cols-[360px_1fr]">
           <input type="hidden" name="staff_id" value={selectedStaff} />
           <input type="hidden" name="target_month" value={targetMonth} />
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
