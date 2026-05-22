@@ -21,7 +21,7 @@ const deductionFields = [
   ["actual_transfer_amount", "実際振込金額"]
 ] as const;
 
-export default async function SalariesPage({ searchParams }: { searchParams: Promise<{ month?: string; staff?: string }> }) {
+export default async function SalariesPage({ searchParams }: { searchParams: Promise<{ error?: string; month?: string; staff?: string }> }) {
   const params = await searchParams;
   const targetMonth = isValidYearMonth(params.month ?? "") ? (params.month as string) : currentMonth();
   const [profiles, salaries] = await Promise.all([getProfiles(), getSalaries({ targetMonth })]);
@@ -46,6 +46,11 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
         <h1 className="text-2xl font-bold">給与計算</h1>
         <ExportButtons rows={exportRows} filename={`給与_${targetMonth}`} />
       </div>
+      {params.error ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {params.error}
+        </div>
+      ) : null}
       <form className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-4">
         <label className="field">対象月<input type="month" name="month" defaultValue={targetMonth} /></label>
         <label className="field">社員<select name="staff" defaultValue={selectedStaff}>{profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
