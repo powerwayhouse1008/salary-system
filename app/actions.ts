@@ -82,6 +82,11 @@ function nullableNumberValue(value: FormDataEntryValue | null) {
   return textValue(value) === null ? null : numberValue(value);
 }
 
+function revalidateSalaryPages() {
+  revalidatePath("/admin/salaries");
+  revalidatePath("/staff/salary");
+}
+
 async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>, email: string) {
   const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (error) throw error;
@@ -207,6 +212,7 @@ export async function saveContract(formData: FormData) {
   }
 
   revalidatePath(isAdmin ? "/admin/contracts" : "/staff/contracts");
+  revalidateSalaryPages();
 }
 
 export async function deleteContract(formData: FormData) {
@@ -222,6 +228,7 @@ export async function deleteContract(formData: FormData) {
   throwIfSupabaseError(error, "契約を削除できませんでした");
 
   revalidatePath(user.role === "admin" ? "/admin/contracts" : "/staff/contracts");
+  revalidateSalaryPages();
 }
 
 export async function deleteSelectedContracts(formData: FormData) {
@@ -230,6 +237,7 @@ export async function deleteSelectedContracts(formData: FormData) {
   const ids = formData.getAll("selected_contract_id").map((id) => textValue(id)).filter((id): id is string => Boolean(id));
   if (ids.length === 0) {
     revalidatePath("/admin/contracts");
+    revalidateSalaryPages();
     return;
   }
 
@@ -237,6 +245,7 @@ export async function deleteSelectedContracts(formData: FormData) {
   throwIfSupabaseError(error, "選択した契約を削除できませんでした");
 
   revalidatePath("/admin/contracts");
+  revalidateSalaryPages();
 }
 
 export async function confirmPayment(formData: FormData) {
@@ -303,6 +312,7 @@ export async function updateContractPaymentItem(formData: FormData) {
       .eq("id", id);
     throwIfSupabaseError(error, "入金状態を保存できませんでした");
     revalidatePath("/admin/contracts");
+    revalidateSalaryPages();
     return;
   }
   throwIfSupabaseError(fetchError, "入金項目を取得できませんでした");
@@ -369,6 +379,7 @@ export async function updateContractPaymentItems(formData: FormData) {
   const ids = Array.from(itemsByContractId.keys());
   if (ids.length === 0) {
     revalidatePath("/admin/contracts");
+    revalidateSalaryPages();
     return;
   }
 
@@ -426,6 +437,7 @@ export async function updateContractPaymentItems(formData: FormData) {
 
   updateResults.forEach((result) => throwIfSupabaseError(result.error, "入金項目を保存できませんでした"));
   revalidatePath("/admin/contracts");
+  revalidateSalaryPages();
 }
 
 export async function saveFormula(formData: FormData) {

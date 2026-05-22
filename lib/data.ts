@@ -1,7 +1,9 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { Contract, Profile, SalaryFormula, SalaryMonthly } from "@/lib/types";
 
 export async function getProfiles() {
+  noStore();
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase.from("profiles").select("*").order("name");
   if (error) throw error;
@@ -39,6 +41,7 @@ export async function getProfiles() {
 }
 
 export async function getContracts(options: { staffId?: string; limit?: number } = {}) {
+ noStore();
  let query = getSupabaseAdmin().from("contracts").select("*").order("contract_date", { ascending: false }).order("created_at", { ascending: false });
   if (options.staffId) query = query.eq("staff_id", options.staffId);
   if (options.limit) query = query.limit(options.limit);
@@ -49,12 +52,14 @@ export async function getContracts(options: { staffId?: string; limit?: number }
 }
 
 export async function getFormulas() {
+  noStore();
   const { data, error } = await getSupabaseAdmin().from("salary_formulas").select("*").order("is_default", { ascending: false });
   if (error) throw error;
   return (data ?? []) as SalaryFormula[];
 }
 
 export async function getSalaries(options: { staffId?: string; targetMonth?: string } = {}) {
+  noStore();
   let query = getSupabaseAdmin().from("salary_monthly").select("*").order("target_month", { ascending: false });
   if (options.staffId) query = query.eq("staff_id", options.staffId);
   if (options.targetMonth) query = query.eq("target_month", options.targetMonth);
@@ -65,6 +70,7 @@ export async function getSalaries(options: { staffId?: string; targetMonth?: str
 }
 
 export async function getDashboardStats(targetMonth: string) {
+  noStore();
   const start = `${targetMonth}-01`;
   const end = nextMonth(targetMonth);
   const [{ data: contracts }, { data: salaries }, { data: profiles }] = await Promise.all([

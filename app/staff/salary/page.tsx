@@ -3,6 +3,9 @@ import { SalaryBadge } from "@/components/status-badge";
 import { getSalaries } from "@/lib/data";
 import { yen } from "@/lib/format";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function StaffSalaryPage() {
   const session = await auth();
   const salaries = await getSalaries({ staffId: session?.user.id });

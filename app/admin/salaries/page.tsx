@@ -5,6 +5,9 @@ import { SalaryBadge } from "@/components/status-badge";
 import { getProfiles, getSalaries } from "@/lib/data";
 import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const deductionFields = [
   ["social_insurance", "社会保険（1分）"],
   ["pension", "年金料"],
