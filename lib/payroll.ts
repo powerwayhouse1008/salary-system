@@ -95,6 +95,12 @@ function sum(values: number[]) {
 }
 
 function effectivePaymentAmount(contract: Contract, key: string, fallback: number) {
+  if (contract.payment_items?.length) {
+    const item = contract.payment_items.find((paymentItem) => paymentItem.key === key);
+    if (!item || item.payment_status !== "入金済み") return 0;
+    return Number(item.actual_received_amount ?? fallback ?? 0);
+  }
+
   const item = contract.payment_items?.find((paymentItem) => paymentItem.key === key);
   return Number(item?.actual_received_amount ?? fallback ?? 0);
 }

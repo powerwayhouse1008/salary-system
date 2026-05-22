@@ -47,20 +47,20 @@ function paymentStatusValue(value: FormDataEntryValue | null): PaymentStatus {
 }
 
 function aggregatePaymentStatus(items: PaymentItem[]): PaymentStatus {
-  const activeItems = items.filter((item) => item.expected_amount > 0 || item.actual_received_amount > 0);
+  const activeItems = items.filter((item) => item.expected_amount > 0 || (item.actual_received_amount ?? 0) > 0);
   if (activeItems.length === 0) return "未確認";
   if (activeItems.every((item) => item.payment_status === "キャンセル")) return "キャンセル";
   if (activeItems.some((item) => item.payment_status === "返金あり")) return "返金あり";
   if (activeItems.every((item) => item.payment_status === "入金済み")) return "入金済み";
-  if (activeItems.some((item) => item.payment_status === "一部入金" || item.actual_received_amount > 0 || item.payment_status === "入金済み")) {
+  if (activeItems.some((item) => item.payment_status === "一部入金" || (item.actual_received_amount ?? 0) > 0 || item.payment_status === "入金済み")) {
     return "一部入金";
   }
   if (activeItems.some((item) => item.payment_status === "入金待ち")) return "入金待ち";
   return "未確認";
 }
 
-function paymentConfirmedAt(status: PaymentStatus) {
-  return status === "入金済み" ? new Date().toISOString() : null;
+function paymentItemsConfirmedAt(items: PaymentItem[]) {
+  return items.some((item) => item.payment_status === "入金済み") ? new Date().toISOString() : null;
 }
 
 function nullableNumberValue(value: FormDataEntryValue | null) {
@@ -282,7 +282,7 @@ export async function updateContractPaymentItem(formData: FormData) {
       payment_items: paymentItems,
       actual_received_amount: actualReceivedAmount,
       payment_status: paymentStatus,
-      payment_confirmed_at: paymentConfirmedAt(paymentStatus),
+      payment_confirmed_at: paymentItemsConfirmedAt(paymentItems),
       updated_at: new Date().toISOString()
     })
     .eq("id", id);
@@ -334,7 +334,7 @@ export async function recalculateSalary(formData: FormData) {
       .from("contracts")
       .select("*")
       .eq("staff_id", staffId)
-      .eq("payment_status", "入金済み")
+      .in("payment_status", ["入金済み", "一部入金"])
       .gte("payment_confirmed_at", `${targetMonth}-01`)
       .lt("payment_confirmed_at", nextMonth(targetMonth))
   ]);
