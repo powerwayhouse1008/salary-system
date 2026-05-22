@@ -1,8 +1,8 @@
 import { Parser } from "expr-eval";
 
 const allowedVariables = [
-  "売買売上合計",
-  "賃貸売上合計",
+  "AD売上合計",
+  "仲介売上合計",
   "売買歩合率",
   "賃貸歩合率",
   "前月残り金額",

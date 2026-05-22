@@ -11,16 +11,10 @@ type ContractPaymentLine = Pick<PaymentItem, "key" | "label" | "expected_amount"
 
 const moneyFields: { key: keyof Contract; label: string }[] = [
   { key: "rent", label: "賃料" },
-  { key: "bank_deposit", label: "銀行入金" },
-  { key: "withdrawal", label: "出金" },
-  { key: "transfer_fee", label: "振込手数料" },
-  { key: "brokerage_sales", label: "売買売上" },
-  { key: "ad_sales", label: "賃貸売上" },
+  { key: "brokerage_sales", label: "AD売上" },
+  { key: "ad_sales", label: "仲介売上" },
   { key: "ad_payment", label: "AD入金" },
-  { key: "refund_or_adjustment", label: "選考(返金等）" },
-  { key: "previous_ad_payment", label: "前のAD入金" },
-  { key: "salary_settlement", label: "給料清算" },
-  { key: "expected_payment_amount", label: "予定入金額" }
+  { key: "refund_or_adjustment", label: "選考(返金等）" }
 ];
 
 function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
@@ -38,7 +32,7 @@ function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
       return mergePaymentItem(savedItems.get(key), key, `その他収入: ${item.name || index + 1}`, Number(item.amount ?? 0));
     }) ?? [];
 
-  return [...lines, ...otherIncomeLines].length ? [...lines, ...otherIncomeLines] : [mergePaymentItem(savedItems.get("expected_payment_amount"), "expected_payment_amount", "予定入金額", contract.expected_payment_amount)];
+  return [...lines, ...otherIncomeLines].length ? [...lines, ...otherIncomeLines] : [mergePaymentItem(savedItems.get("brokerage_sales"), "brokerage_sales", "AD売上", contract.brokerage_sales)];
 }
 
 function mergePaymentItem(savedItem: PaymentItem | undefined, key: string, label: string, expectedAmount: number): ContractPaymentLine {
@@ -60,13 +54,19 @@ export default async function AdminContractsPage() {
       <h1 className="text-2xl font-bold">契約・入金確認</h1>
       <form action={saveContract} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-5">
         <label className="field">契約日付<input name="contract_date" type="date" /></label>
+        <fieldset className="field">
+          契約種類
+          <div className="flex gap-2">
+            <label className="btn flex-1"><input name="contract_type" type="radio" value="売買" defaultChecked className="h-4 w-4" />売買</label>
+            <label className="btn flex-1"><input name="contract_type" type="radio" value="賃貸" className="h-4 w-4" />賃貸</label>
+          </div>
+        </fieldset>
         <label className="field">契約番号<input name="contract_number" /></label>
         <label className="field">契約名前<input name="customer_name" /></label>
         <label className="field">担当<select name="staff_id">{profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
         <label className="field">物件名<input name="property_name" /></label>
-         <label className="field">売買売上<input name="brokerage_sales" type="number" /></label>
-        <label className="field">賃貸売上<input name="ad_sales" type="number" /></label>
-        <label className="field">予定入金額<input name="expected_payment_amount" type="number" /></label>
+        <label className="field">AD売上<input name="brokerage_sales" type="number" /></label>
+        <label className="field">仲介売上<input name="ad_sales" type="number" /></label>
         <label className="field">実入金額<input name="actual_received_amount" type="number" /></label>
         <OtherIncomeFields />
         <div className="pt-6"><button className="btn btn-primary" type="submit">追加</button></div>
@@ -76,6 +76,7 @@ export default async function AdminContractsPage() {
           <thead>
             <tr>
               <th>契約日</th>
+              <th>種類</th>
               <th>番号</th>
               <th>契約名前</th>
               <th>担当</th>
@@ -95,6 +96,7 @@ export default async function AdminContractsPage() {
                     {index === 0 ? (
                       <>
                         <td rowSpan={lines.length}>{contract.contract_date}</td>
+                        <td rowSpan={lines.length}>{contract.contract_type}</td>
                         <td rowSpan={lines.length}>{contract.contract_number}</td>
                         <td rowSpan={lines.length} className="font-semibold">{contract.customer_name}</td>
                         <td rowSpan={lines.length}>{contract.profiles?.name}</td>

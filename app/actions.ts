@@ -164,7 +164,7 @@ export async function saveContract(formData: FormData) {
     other_income_items: otherIncomeItems(formData),
     ad_payment: numberValue(formData.get("ad_payment")),
     refund_or_adjustment: numberValue(formData.get("refund_or_adjustment")),
-    contract_type: textValue(formData.get("contract_type")),
+    contract_type: textValue(formData.get("contract_type")) ?? "売買",
     management_company: textValue(formData.get("management_company")),
     previous_ad_payment: numberValue(formData.get("previous_ad_payment")),
     salary_item: textValue(formData.get("salary_item")),
