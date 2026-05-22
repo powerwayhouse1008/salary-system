@@ -141,7 +141,7 @@ create policy "salaries admin write" on salary_monthly for all using (public.is_
 insert into salary_formulas (name, formula_total, formula_deduction, formula_transfer, formula_remaining, is_default)
 values (
   '標準給与計算',
-  'AD売上合計 * 売買歩合率 + 仲介売上合計 * 賃貸歩合率 + その他収入歩合 + 前月残り金額',
+  '(売買AD売上合計 + 売買仲介売上) * 売買歩合率 + (賃貸AD売上合計 + 賃貸仲介売上) * 賃貸歩合率 + その他収入歩合 + 前月残り金額',
   '社会保険 + 年金料 + 雇用保険料 + 所得税 + 定期券 + 成約交通費 + IT + 物件管理費用 + 経費領収書 + その他控除',
   '合計 - 控除合計 + その他支給',
   '合計 - 控除合計 + その他支給 - 実際振込金額',
@@ -271,3 +271,13 @@ update salary_formulas
 set formula_total = replace(replace(formula_total, '売買売上合計', 'AD売上合計'), '賃貸売上合計', '仲介売上合計')
 where formula_total is not null
   and (formula_total like '%売買売上合計%' or formula_total like '%賃貸売上合計%');
+
+update salary_formulas
+set formula_total = '(売買AD売上合計 + 売買仲介売上) * 売買歩合率 + (賃貸AD売上合計 + 賃貸仲介売上) * 賃貸歩合率 + その他収入歩合 + 前月残り金額'
+where formula_total is not null
+  and (
+    formula_total like '%AD売上合計%'
+    or formula_total like '%仲介売上合計%'
+    or formula_total like '%売買売上合計%'
+    or formula_total like '%賃貸売上合計%'
+  );
