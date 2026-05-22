@@ -45,6 +45,9 @@ const parser = new Parser({
   }
 });
 
+const variableTokenEntries = allowedVariables.map((variable, index) => [variable, `v${index}`] as const);
+const variableTokenMap = new Map<string, string>(variableTokenEntries);
+
 function normalizeFormulaExpression(expression: string) {
   return expression
     .replaceAll("売買AD売上合計", "__SALE_AD__")
@@ -62,18 +65,29 @@ function normalizeFormulaExpression(expression: string) {
     .replaceAll("__RENTAL_BROKERAGE__", "賃貸仲介売上");
 }
 
+function tokenizeFormulaExpression(expression: string) {
+  return variableTokenEntries.reduce((current, [variable, token]) => current.replaceAll(variable, token), expression);
+}
+
+function tokenizeFormulaContext(context: Partial<FormulaContext>) {
+  return Object.fromEntries(
+    Object.entries(context).map(([variable, value]) => [variableTokenMap.get(variable) ?? variable, value])
+  );
+}
+
 export function evaluateFormula(expression: string, context: Partial<FormulaContext>) {
-  const normalizedExpression = normalizeFormulaExpression(expression);
+  const normalizedExpression = tokenizeFormulaExpression(normalizeFormulaExpression(expression));
   if (!normalizedExpression.trim()) return 0;
   const parsed = parser.parse(normalizedExpression);
   const variables = parsed.variables();
-  const unsupported = variables.filter((variable) => !allowedVariables.includes(variable as FormulaVariable));
+  const supportedTokens = new Set(variableTokenMap.values());
+  const unsupported = variables.filter((variable) => !supportedTokens.has(variable));
 
   if (unsupported.length) {
     throw new Error(`使用できない変数: ${unsupported.join(", ")}`);
   }
 
-  return Math.round(parsed.evaluate(context));
+  return Math.round(parsed.evaluate(tokenizeFormulaContext(context)));
 }
 
 export function defaultFormulaContext(): FormulaContext {

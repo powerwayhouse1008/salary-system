@@ -77,8 +77,35 @@ function mergePaymentItem(savedItem: PaymentItem | undefined, key: string, label
   };
 }
 
-export default async function AdminContractsPage() {
+function matchesSearch(contract: Contract, query: string) {
+  if (!query) return true;
+  const values = [
+    contract.contract_date,
+    contract.contract_number,
+    contract.customer_name,
+    contract.residence_status,
+    contract.phone,
+    contract.property_name,
+    contract.address,
+    contract.management_company,
+    contract.contract_type,
+    contract.profiles?.name,
+    contract.profiles?.email
+  ];
+  return values.some((value) => String(value ?? "").toLowerCase().includes(query));
+}
+
+export default async function AdminContractsPage({ searchParams }: { searchParams: Promise<{ month?: string; q?: string; staff?: string }> }) {
+  const params = await searchParams;
   const [contracts, profiles] = await Promise.all([getContracts(), getProfiles()]);
+  const selectedMonth = params.month ?? "";
+  const selectedStaff = params.staff ?? "";
+  const searchQuery = (params.q ?? "").trim().toLowerCase();
+  const filteredContracts = contracts.filter((contract) => {
+    const monthMatches = selectedMonth ? contract.contract_date?.startsWith(selectedMonth) : true;
+    const staffMatches = selectedStaff ? contract.staff_id === selectedStaff : true;
+    return monthMatches && staffMatches && matchesSearch(contract, searchQuery);
+  });
 
   return (
     <div className="space-y-6">
@@ -102,6 +129,21 @@ export default async function AdminContractsPage() {
         <OtherIncomeFields />
         <div className="pt-6"><button className="btn btn-primary" type="submit">追加</button></div>
       </form>
+      <form className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-[180px_220px_1fr_auto]">
+        <label className="field">対象月<input type="month" name="month" defaultValue={selectedMonth} /></label>
+        <label className="field">
+          担当
+          <select name="staff" defaultValue={selectedStaff}>
+            <option value="">すべて</option>
+            {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+          </select>
+        </label>
+        <label className="field">検索<input name="q" defaultValue={params.q ?? ""} placeholder="契約名前・物件名・住所など" /></label>
+        <div className="flex items-end gap-2">
+          <button className="btn btn-primary" type="submit">絞り込み</button>
+          <a className="btn" href="/admin/contracts">解除</a>
+        </div>
+      </form>
       <div className="table-wrap">
         <table className="data-table">
           <thead>
@@ -120,7 +162,7 @@ export default async function AdminContractsPage() {
             </tr>
           </thead>
           <tbody>
-            {contracts.flatMap((contract, contractIndex) => {
+            {filteredContracts.flatMap((contract, contractIndex) => {
               const lines = contractManagementLines(contract);
               const groupStyle = contractGroupStyles[contractIndex % contractGroupStyles.length];
               return lines.map((item, index) => (
