@@ -12,7 +12,9 @@ const adminLinks = [
 
 const managerLinks = [
   ["社員", "/admin/employees"],
-  ["給与計算", "/admin/salaries"]
+  ["契約", "/admin/contracts"],
+  ["給与計算", "/admin/salaries"],
+  ["計算式", "/admin/formulas"]
 ];
 
 const staffLinks = [
@@ -22,7 +24,7 @@ const staffLinks = [
 
 export function AppNav({ role, name }: { role: Role; name?: string | null }) {
   const links = role === "admin" ? adminLinks : role === "manager" ? managerLinks : staffLinks;
-  const homeHref = role === "admin" ? "/admin" : role === "manager" ? "/admin/salaries" : "/staff/contracts";
+  const homeHref = role === "admin" ? "/admin" : role === "manager" ? "/admin/employees" : "/staff/contracts";
 
   return (
     <header className="border-b border-line bg-white">

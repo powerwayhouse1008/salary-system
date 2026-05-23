@@ -86,10 +86,14 @@ export async function getManageableProfiles(user: { id: string; role: string }) 
   return profiles.filter((profile) => allowedIds.has(profile.id));
 }
 
-export async function getContracts(options: { staffId?: string; limit?: number } = {}) {
+export async function getContracts(options: { staffId?: string; staffIds?: string[]; limit?: number } = {}) {
  noStore();
  let query = getSupabaseAdmin().from("contracts").select("*").order("contract_date", { ascending: false }).order("created_at", { ascending: false });
   if (options.staffId) query = query.eq("staff_id", options.staffId);
+  if (options.staffIds) {
+    if (options.staffIds.length === 0) return [];
+    query = query.in("staff_id", options.staffIds);
+  }
   if (options.limit) query = query.limit(options.limit);
   const { data, error } = await query;
   if (error) throw error;
