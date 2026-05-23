@@ -228,7 +228,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (path === "/login" || path.startsWith("/api/auth")) return true;
       if (!session?.user || session.user.isActive === false) return false;
       let role = session.user.role;
-      let active = session.user.isActive !== false;
+      let active: boolean = true;
       if (hasSupabaseAdminEnv() && session.user.id) {
         try {
           const { data } = await getSupabaseAdmin().from("profiles").select("role,is_active").eq("id", session.user.id).maybeSingle();
