@@ -26,6 +26,11 @@ function isMissingPaymentItemsColumn(error: { message?: string } | null) {
   return message.includes("payment_items") && (message.includes("column") || message.includes("schema cache"));
 }
 
+function isMissingManagerPermissionsTable(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return error?.code === "42P01" || error?.code === "PGRST205" || (message.includes("manager_staff_permissions") && message.includes("table"));
+}
+
 function salaryErrorRedirect(error: unknown, targetMonth: string | null, staffId: string | null): never {
   console.error("recalculateSalary failed", error);
   const message = error instanceof Error ? error.message : "給与を保存できませんでした。";
@@ -109,12 +114,17 @@ async function canManageSalaryStaff(supabase: ReturnType<typeof getSupabaseAdmin
     .eq("manager_id", user.id)
     .eq("staff_id", staffId)
     .maybeSingle();
+  if (isMissingManagerPermissionsTable(error)) return false;
   throwIfSupabaseError(error, "給与計算の権限を確認できませんでした");
   return Boolean(data);
 }
 
 async function saveManagerStaffPermissions(supabase: ReturnType<typeof getSupabaseAdmin>, managerId: string, role: string, formData: FormData) {
   const { error: deleteError } = await supabase.from("manager_staff_permissions").delete().eq("manager_id", managerId);
+  if (isMissingManagerPermissionsTable(deleteError)) {
+    console.warn("manager_staff_permissions table is missing. Run supabase/schema.sql to enable manager permissions.");
+    return;
+  }
   throwIfSupabaseError(deleteError, "管理対象社員を更新できませんでした");
   if (role !== "manager") return;
 
@@ -129,6 +139,10 @@ async function saveManagerStaffPermissions(supabase: ReturnType<typeof getSupaba
       staff_id: staffId
     }))
   );
+  if (isMissingManagerPermissionsTable(error)) {
+    console.warn("manager_staff_permissions table is missing. Run supabase/schema.sql to enable manager permissions.");
+    return;
+  }
   throwIfSupabaseError(error, "管理対象社員を保存できませんでした");
 }
 

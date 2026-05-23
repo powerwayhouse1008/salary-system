@@ -2,6 +2,11 @@ import { unstable_noStore as noStore } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { Contract, Profile, SalaryFormula, SalaryMonthly } from "@/lib/types";
 
+function isMissingManagerPermissionsTable(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return error?.code === "42P01" || error?.code === "PGRST205" || (message.includes("manager_staff_permissions") && message.includes("table"));
+}
+
 export async function getProfiles() {
   noStore();
   const supabase = getSupabaseAdmin();
@@ -58,6 +63,10 @@ export async function getManagerStaffPermissions(managerId?: string) {
   let query = getSupabaseAdmin().from("manager_staff_permissions").select("manager_id,staff_id");
   if (managerId) query = query.eq("manager_id", managerId);
   const { data, error } = await query;
+  if (isMissingManagerPermissionsTable(error)) {
+    console.warn("manager_staff_permissions table is missing. Run supabase/schema.sql to enable manager permissions.");
+    return [];
+  }
   if (error) throw error;
   return (data ?? []) as { manager_id: string; staff_id: string }[];
 }
