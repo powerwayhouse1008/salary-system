@@ -158,7 +158,7 @@ async function assertCanManageContracts(supabase: ReturnType<typeof getSupabaseA
 async function saveManagerStaffPermissions(supabase: ReturnType<typeof getSupabaseAdmin>, managerId: string, role: string, formData: FormData) {
   const { error: deleteError } = await supabase.from("manager_staff_permissions").delete().eq("manager_id", managerId);
   if (isMissingManagerPermissionsTable(deleteError)) {
-    console.warn("manager_staff_permissions table is missing. Run supabase/schema.sql to enable manager permissions.");
+    if (role === "manager") throw new Error("管理対象社員を保存できませんでした。Supabaseでmanager_staff_permissionsテーブルを作成してください。");
     return;
   }
   throwIfSupabaseError(deleteError, "管理対象社員を更新できませんでした");
@@ -176,8 +176,7 @@ async function saveManagerStaffPermissions(supabase: ReturnType<typeof getSupaba
     }))
   );
   if (isMissingManagerPermissionsTable(error)) {
-    console.warn("manager_staff_permissions table is missing. Run supabase/schema.sql to enable manager permissions.");
-    return;
+    throw new Error("管理対象社員を保存できませんでした。Supabaseでmanager_staff_permissionsテーブルを作成してください。");
   }
   throwIfSupabaseError(error, "管理対象社員を保存できませんでした");
 }
