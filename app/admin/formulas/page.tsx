@@ -1,10 +1,12 @@
 import { saveFormula } from "@/app/actions";
 import { auth } from "@/auth";
 import { FormulaTester } from "@/components/formula-tester";
+import { SavedToast } from "@/components/saved-toast";
 import { getFormulas } from "@/lib/data";
 import { defaultFormula } from "@/lib/payroll";
 
-export default async function FormulasPage() {
+export default async function FormulasPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  const params = await searchParams;
   const session = await auth();
   const isAdmin = session?.user.role === "admin";
   const formulas = await getFormulas();
@@ -18,6 +20,7 @@ export default async function FormulasPage() {
 
   return (
     <div className="space-y-6">
+      <SavedToast show={params.saved === "1"} />
       <h1 className="text-2xl font-bold">給与計算式</h1>
       <form action={saveFormula} className="grid gap-4 rounded-lg border border-line bg-white p-4 lg:grid-cols-[1fr_320px]">
         <input type="hidden" name="id" value={active.id} />

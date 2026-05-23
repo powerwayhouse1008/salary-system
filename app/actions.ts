@@ -168,15 +168,22 @@ async function saveManagerStaffPermissions(supabase: ReturnType<typeof getSupaba
   );
   const { error: deleteError } = await supabase.from("manager_staff_permissions").delete().eq("manager_id", managerId);
   if (isMissingManagerPermissionsTable(deleteError)) {
+    const { data: authUser, error: getUserError } = await supabase.auth.admin.getUserById(managerId);
+    if (getUserError) throw getUserError;
+    const { error: metadataError } = await supabase.auth.admin.updateUserById(managerId, {
+      app_metadata: {
+        ...(authUser.user?.app_metadata ?? {}),
+        managed_staff_ids: role === "manager" ? staffIds : []
+      }
+    });
+    throwIfSupabaseError(metadataError, "管理対象社員を保存できませんでした");
+    return;
     if (role === "manager") throw new Error("管理対象社員を保存できませんでした。Supabaseでmanager_staff_permissionsテーブルを作成してください。");
     return;
   }
   throwIfSupabaseError(deleteError, "管理対象社員を更新できませんでした");
   if (role !== "manager") return;
 
-  const staffIds = Array.from(
-    new Set(formData.getAll("managed_staff_id").map((id) => textValue(id)).filter((id): id is string => Boolean(id) && id !== managerId))
-  );
   if (staffIds.length === 0) return;
 
   const { error } = await supabase.from("manager_staff_permissions").insert(

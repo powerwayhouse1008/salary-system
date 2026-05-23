@@ -1,5 +1,6 @@
 import { saveEmployee } from "@/app/actions";
 import { auth } from "@/auth";
+import { SavedToast } from "@/components/saved-toast";
 import { getManageableProfiles, getProfilesWithManagedStaff } from "@/lib/data";
 import type { Profile } from "@/lib/types";
 
@@ -19,14 +20,9 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-6">
+      <SavedToast show={params.saved === "1"} />
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">社員管理</h1>
-        {params.saved ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
-            <span className="grid h-4 w-4 place-items-center rounded-full bg-emerald-500 text-[10px] leading-none text-white">✓</span>
-            保存済み
-          </span>
-        ) : null}
       </div>
 
       {params.error ? <ErrorMessage message={params.error} /> : null}

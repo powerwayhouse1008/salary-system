@@ -1,6 +1,7 @@
 import { deleteSelectedContracts, saveContract, updateContractPaymentItems } from "@/app/actions";
 import { auth } from "@/auth";
 import { OtherIncomeFields } from "@/components/other-income-fields";
+import { SavedToast } from "@/components/saved-toast";
 import { PaymentBadge } from "@/components/status-badge";
 import { getContracts, getManageableProfiles, getProfiles } from "@/lib/data";
 import { yen } from "@/lib/format";
@@ -96,7 +97,7 @@ function matchesSearch(contract: Contract, query: string) {
   return values.some((value) => String(value ?? "").toLowerCase().includes(query));
 }
 
-export default async function AdminContractsPage({ searchParams }: { searchParams: Promise<{ month?: string; q?: string; staff?: string }> }) {
+export default async function AdminContractsPage({ searchParams }: { searchParams: Promise<{ month?: string; q?: string; staff?: string; saved?: string }> }) {
   const params = await searchParams;
   const session = await auth();
   const isAdmin = session?.user.role === "admin";
@@ -113,6 +114,7 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
 
   return (
     <div className="space-y-6">
+      <SavedToast show={params.saved === "1"} />
       <h1 className="text-2xl font-bold">契約・入金確認</h1>
       {isAdmin ? <form action={saveContract} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-5">
         <label className="field">契約日付<input name="contract_date" type="date" /></label>

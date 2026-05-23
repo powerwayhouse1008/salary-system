@@ -2,6 +2,7 @@ import { recalculateSalary } from "@/app/actions";
 import { auth } from "@/auth";
 import { ExportButtons } from "@/components/export-buttons";
 import { OtherIncomeFields } from "@/components/other-income-fields";
+import { SavedToast } from "@/components/saved-toast";
 import { SalaryBadge } from "@/components/status-badge";
 import { getManageableProfiles, getSalaries } from "@/lib/data";
 import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
@@ -25,7 +26,7 @@ const deductionFields = [
   ["actual_transfer_amount", "実際振込金額"]
 ] as const;
 
-export default async function SalariesPage({ searchParams }: { searchParams: Promise<{ error?: string; month?: string; staff?: string }> }) {
+export default async function SalariesPage({ searchParams }: { searchParams: Promise<{ error?: string; month?: string; staff?: string; saved?: string }> }) {
   const params = await searchParams;
   const session = await auth();
   if (!session?.user) return null;
@@ -52,6 +53,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-6">
+      <SavedToast show={params.saved === "1"} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">給与計算</h1>
         <ExportButtons rows={exportRows} filename={`給与_${targetMonth}`} />
