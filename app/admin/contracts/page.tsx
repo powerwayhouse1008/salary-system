@@ -1,7 +1,8 @@
 import { deleteSelectedContracts, saveContract, updateContractPaymentItems } from "@/app/actions";
+import { auth } from "@/auth";
 import { OtherIncomeFields } from "@/components/other-income-fields";
 import { PaymentBadge } from "@/components/status-badge";
-import { getContracts, getProfiles } from "@/lib/data";
+import { getContracts, getManageableProfiles, getProfiles } from "@/lib/data";
 import { yen } from "@/lib/format";
 import type { Contract, PaymentItem, PaymentStatus } from "@/lib/types";
 
@@ -97,7 +98,10 @@ function matchesSearch(contract: Contract, query: string) {
 
 export default async function AdminContractsPage({ searchParams }: { searchParams: Promise<{ month?: string; q?: string; staff?: string }> }) {
   const params = await searchParams;
-  const [contracts, profiles] = await Promise.all([getContracts(), getProfiles()]);
+  const session = await auth();
+  const isAdmin = session?.user.role === "admin";
+  const profiles = isAdmin ? await getProfiles() : session?.user ? await getManageableProfiles(session.user) : [];
+  const contracts = await getContracts(isAdmin ? {} : { staffIds: profiles.map((profile) => profile.id) });
   const selectedMonth = params.month ?? "";
   const selectedStaff = params.staff ?? "";
   const searchQuery = (params.q ?? "").trim().toLowerCase();
@@ -110,7 +114,7 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">契約・入金確認</h1>
-      <form action={saveContract} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-5">
+      {isAdmin ? <form action={saveContract} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-5">
         <label className="field">契約日付<input name="contract_date" type="date" /></label>
         <fieldset className="field">
           契約種類
@@ -128,7 +132,7 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
         <label className="field">実入金額<input name="actual_received_amount" type="number" /></label>
         <OtherIncomeFields />
         <div className="pt-6"><button className="btn btn-primary" type="submit">追加</button></div>
-      </form>
+      </form> : null}
       <form className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-[180px_220px_1fr_auto]">
         <label className="field">対象月<input type="month" name="month" defaultValue={selectedMonth} /></label>
         <label className="field">
@@ -142,7 +146,7 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
         <div className="flex items-end gap-2">
           <button className="btn btn-primary" type="submit">絞り込み</button>
           <button className="btn btn-primary" type="submit" form="contract-payment-items-form">保存</button>
-          <button className="btn border-red-200 text-red-700 hover:bg-red-50" type="submit" form="contract-payment-items-form" formAction={deleteSelectedContracts}>選択削除</button>
+          {isAdmin ? <button className="btn border-red-200 text-red-700 hover:bg-red-50" type="submit" form="contract-payment-items-form" formAction={deleteSelectedContracts}>選択削除</button> : null}
           <a className="btn" href="/admin/contracts">解除</a>
         </div>
       </form>
