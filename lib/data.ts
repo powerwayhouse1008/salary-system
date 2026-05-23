@@ -66,12 +66,19 @@ export async function getProfilesWithManagedStaff() {
 
 export async function getManagerStaffPermissions(managerId?: string) {
   noStore();
-  let query = getSupabaseAdmin().from("manager_staff_permissions").select("manager_id,staff_id");
+  const supabase = getSupabaseAdmin();
+  let query = supabase.from("manager_staff_permissions").select("manager_id,staff_id");
   if (managerId) query = query.eq("manager_id", managerId);
   const { data, error } = await query;
   if (isMissingManagerPermissionsTable(error)) {
     console.warn("manager_staff_permissions table is missing. Run supabase/schema.sql to enable manager permissions.");
-    return [];
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (authError) throw authError;
+    return authUsers.users.flatMap((user) => {
+      if (managerId && user.id !== managerId) return [];
+      const managedStaffIds = Array.isArray(user.app_metadata?.managed_staff_ids) ? (user.app_metadata.managed_staff_ids as string[]) : [];
+      return managedStaffIds.map((staffId) => ({ manager_id: user.id, staff_id: staffId }));
+    });
   }
   if (error) throw error;
   return (data ?? []) as { manager_id: string; staff_id: string }[];
