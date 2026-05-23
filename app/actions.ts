@@ -138,7 +138,11 @@ async function canManageSalaryStaff(supabase: ReturnType<typeof getSupabaseAdmin
 
 async function getManagedStaffIds(supabase: ReturnType<typeof getSupabaseAdmin>, managerId: string) {
   const { data, error } = await supabase.from("manager_staff_permissions").select("staff_id").eq("manager_id", managerId);
-  if (isMissingManagerPermissionsTable(error)) return [];
+  if (isMissingManagerPermissionsTable(error)) {
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(managerId);
+    if (authError) throw authError;
+    return Array.isArray(authUser.user?.app_metadata?.managed_staff_ids) ? (authUser.user.app_metadata.managed_staff_ids as string[]) : [];
+  }
   throwIfSupabaseError(error, "管理対象社員を確認できませんでした");
   return (data ?? []).map((row) => row.staff_id as string);
 }
@@ -147,6 +151,7 @@ async function assertCanManageContracts(supabase: ReturnType<typeof getSupabaseA
   if (user.role === "admin") return;
   if (user.role !== "manager") throw new Error("この契約を操作する権限がありません。");
   const managedStaffIds = new Set(await getManagedStaffIds(supabase, user.id));
+  managedStaffIds.add(user.id);
   const uniqueIds = Array.from(new Set(contractIds));
   if (uniqueIds.length === 0) return;
 
@@ -158,6 +163,9 @@ async function assertCanManageContracts(supabase: ReturnType<typeof getSupabaseA
 }
 
 async function saveManagerStaffPermissions(supabase: ReturnType<typeof getSupabaseAdmin>, managerId: string, role: string, formData: FormData) {
+  const staffIds = Array.from(
+    new Set(formData.getAll("managed_staff_id").map((id) => textValue(id)).filter((id): id is string => Boolean(id) && id !== managerId))
+  );
   const { error: deleteError } = await supabase.from("manager_staff_permissions").delete().eq("manager_id", managerId);
   if (isMissingManagerPermissionsTable(deleteError)) {
     if (role === "manager") throw new Error("管理対象社員を保存できませんでした。Supabaseでmanager_staff_permissionsテーブルを作成してください。");
