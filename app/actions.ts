@@ -302,7 +302,6 @@ export async function deleteContract(formData: FormData) {
   const supabase = getSupabaseAdmin();
   const id = textValue(formData.get("id"));
   if (!id) throw new Error("契約IDがありません。");
-  await assertCanManageContracts(supabase, user, [id]);
 
   let query = supabase.from("contracts").delete().eq("id", id);
   if (user.role !== "admin") query = query.eq("staff_id", user.id);
@@ -336,6 +335,7 @@ export async function confirmPayment(formData: FormData) {
   const supabase = getSupabaseAdmin();
   const id = textValue(formData.get("id"));
   if (!id) throw new Error("契約IDがありません。");
+  await assertCanManageContracts(supabase, user, [id]);
 
   const { error } = await supabase
     .from("contracts")
