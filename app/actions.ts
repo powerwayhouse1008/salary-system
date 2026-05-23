@@ -31,6 +31,11 @@ function isMissingManagerPermissionsTable(error: { code?: string; message?: stri
   return error?.code === "42P01" || error?.code === "PGRST205" || (message.includes("manager_staff_permissions") && message.includes("table"));
 }
 
+function isProfilesRoleConstraintError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  return message.includes("profiles_role_check") || (message.includes("violates check constraint") && message.includes("profiles"));
+}
+
 function salaryErrorRedirect(error: unknown, targetMonth: string | null, staffId: string | null): never {
   console.error("recalculateSalary failed", error);
   const message = error instanceof Error ? error.message : "給与を保存できませんでした。";
