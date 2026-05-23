@@ -140,9 +140,9 @@ export default async function AdminContractsPage({ searchParams }: { searchParam
         </label>
         <label className="field">検索<input name="q" defaultValue={params.q ?? ""} placeholder="契約名前・物件名・住所など" /></label>
         <div className="flex items-end gap-2">
+          <button className="btn btn-primary" type="submit">絞り込み</button>
           <button className="btn btn-primary" type="submit" form="contract-payment-items-form">保存</button>
           <button className="btn border-red-200 text-red-700 hover:bg-red-50" type="submit" form="contract-payment-items-form" formAction={deleteSelectedContracts}>選択削除</button>
-          <button className="btn btn-primary" type="submit">絞り込み</button>
           <a className="btn" href="/admin/contracts">解除</a>
         </div>
       </form>

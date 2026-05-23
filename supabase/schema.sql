@@ -7,7 +7,7 @@ create table if not exists profiles (
   name text not null,
   email text unique not null,
   password_hash text,
-  role text not null default 'staff' check (role in ('admin', 'staff')),
+  role text not null default 'staff' check (role in ('admin', 'manager', 'staff')),
   brokerage_commission_rate numeric default 0,
   ad_commission_rate numeric default 0,
   is_active boolean default true,
@@ -17,6 +17,14 @@ create table if not exists profiles (
 );
 
 alter table profiles add column if not exists password_hash text;
+
+create table if not exists manager_staff_permissions (
+  manager_id uuid not null references profiles(id) on delete cascade,
+  staff_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (manager_id, staff_id),
+  check (manager_id <> staff_id)
+);
 
 create table if not exists salary_formulas (
   id uuid primary key default gen_random_uuid(),
@@ -104,6 +112,7 @@ alter table profiles enable row level security;
 alter table contracts enable row level security;
 alter table salary_formulas enable row level security;
 alter table salary_monthly enable row level security;
+alter table manager_staff_permissions enable row level security;
 
 create or replace function public.is_admin()
 returns boolean
@@ -114,6 +123,23 @@ as $$
   select exists(select 1 from profiles where id = auth.uid() and role = 'admin' and is_active = true);
 $$;
 
+create or replace function public.can_manage_staff(target_staff_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists(
+    select 1
+    from manager_staff_permissions msp
+    join profiles manager on manager.id = msp.manager_id
+    where msp.manager_id = auth.uid()
+      and msp.staff_id = target_staff_id
+      and manager.role = 'manager'
+      and manager.is_active = true
+  );
+$$;
+
 drop policy if exists "profiles self read" on profiles;
 create policy "profiles self read" on profiles for select using (id = auth.uid() or public.is_admin());
 
@@ -121,7 +147,7 @@ drop policy if exists "profiles admin write" on profiles;
 create policy "profiles admin write" on profiles for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "contracts staff read own" on contracts;
-create policy "contracts staff read own" on contracts for select using (staff_id = auth.uid() or public.is_admin());
+create policy "contracts staff read own" on contracts for select using (staff_id = auth.uid() or public.is_admin() or public.can_manage_staff(staff_id));
 
 drop policy if exists "contracts staff insert own" on contracts;
 create policy "contracts staff insert own" on contracts for insert with check (staff_id = auth.uid() or public.is_admin());
@@ -133,10 +159,16 @@ drop policy if exists "formulas admin all" on salary_formulas;
 create policy "formulas admin all" on salary_formulas for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "salaries visible" on salary_monthly;
-create policy "salaries visible" on salary_monthly for select using (staff_id = auth.uid() or public.is_admin());
+create policy "salaries visible" on salary_monthly for select using (staff_id = auth.uid() or public.is_admin() or public.can_manage_staff(staff_id));
 
 drop policy if exists "salaries admin write" on salary_monthly;
 create policy "salaries admin write" on salary_monthly for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "manager permissions admin all" on manager_staff_permissions;
+create policy "manager permissions admin all" on manager_staff_permissions for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "manager permissions manager read own" on manager_staff_permissions;
+create policy "manager permissions manager read own" on manager_staff_permissions for select using (manager_id = auth.uid() or public.is_admin());
 
 insert into salary_formulas (name, formula_total, formula_deduction, formula_transfer, formula_remaining, is_default)
 values (
@@ -153,6 +185,14 @@ on conflict do nothing;
 alter table profiles add column if not exists microsoft_id text;
 alter table profiles add column if not exists avatar_url text;
 alter table profiles add column if not exists password_hash text;
+
+create table if not exists manager_staff_permissions (
+  manager_id uuid not null references profiles(id) on delete cascade,
+  staff_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (manager_id, staff_id),
+  check (manager_id <> staff_id)
+);
 alter table profiles add column if not exists role text default 'staff';
 alter table profiles add column if not exists brokerage_commission_rate numeric default 0;
 alter table profiles add column if not exists ad_commission_rate numeric default 0;
@@ -162,10 +202,20 @@ alter table profiles add column if not exists created_at timestamptz default now
 alter table profiles add column if not exists updated_at timestamptz default now();
 alter table profiles drop column if exists phone;
 
-update profiles set role = 'staff' where role is null or role not in ('admin', 'staff');
+update profiles set role = 'staff' where role is null or role not in ('admin', 'manager', 'staff');
 alter table profiles alter column role set default 'staff';
 alter table profiles drop constraint if exists profiles_role_check;
-alter table profiles add constraint profiles_role_check check (role in ('admin', 'staff'));
+alter table profiles add constraint profiles_role_check check (role in ('admin', 'manager', 'staff'));
+
+create table if not exists manager_staff_permissions (
+  manager_id uuid not null references profiles(id) on delete cascade,
+  staff_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (manager_id, staff_id),
+  check (manager_id <> staff_id)
+);
+
+alter table manager_staff_permissions enable row level security;
 
 alter table salary_formulas add column if not exists formula_total text;
 alter table salary_formulas add column if not exists formula_deduction text;

@@ -229,6 +229,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const role = session?.user?.role;
       const active = session?.user?.isActive !== false;
       if (!session?.user || !active) return false;
+      if (path.startsWith("/admin/salaries")) return role === "admin" || role === "manager";
       if (path.startsWith("/admin")) return role === "admin";
       if (path.startsWith("/staff")) return role === "admin" || role === "staff";
       return true;

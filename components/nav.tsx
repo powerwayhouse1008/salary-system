@@ -10,18 +10,21 @@ const adminLinks = [
   ["計算式", "/admin/formulas"]
 ];
 
+const managerLinks = [["給与計算", "/admin/salaries"]];
+
 const staffLinks = [
   ["契約入力", "/staff/contracts"],
   ["給与確認", "/staff/salary"]
 ];
 
 export function AppNav({ role, name }: { role: Role; name?: string | null }) {
-  const links = role === "admin" ? adminLinks : staffLinks;
+  const links = role === "admin" ? adminLinks : role === "manager" ? managerLinks : staffLinks;
+  const homeHref = role === "admin" ? "/admin" : role === "manager" ? "/admin/salaries" : "/staff/contracts";
 
   return (
     <header className="border-b border-line bg-white">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <Link href={role === "admin" ? "/admin" : "/staff/contracts"} className="text-lg font-bold text-brand">
+        <Link href={homeHref} className="text-lg font-bold text-brand">
           給与・歩合管理
         </Link>
         <nav className="flex flex-wrap items-center gap-1">

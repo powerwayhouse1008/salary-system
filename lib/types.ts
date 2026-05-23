@@ -1,4 +1,4 @@
-export type Role = "admin" | "staff";
+export type Role = "admin" | "manager" | "staff";
 export type PaymentStatus = "未確認" | "入金待ち" | "一部入金" | "入金済み" | "返金あり" | "キャンセル";
 export type SalaryStatus = "下書き" | "確定" | "支払済み";
 export type OtherIncomeItem = {
@@ -27,6 +27,7 @@ export type Profile = {
   ad_commission_rate: number;
   is_active: boolean;
   last_login_at?: string | null;
+  managed_staff_ids?: string[];
 };
 
 export type Contract = {

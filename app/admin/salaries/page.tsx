@@ -1,8 +1,9 @@
 import { recalculateSalary } from "@/app/actions";
+import { auth } from "@/auth";
 import { ExportButtons } from "@/components/export-buttons";
 import { OtherIncomeFields } from "@/components/other-income-fields";
 import { SalaryBadge } from "@/components/status-badge";
-import { getProfiles, getSalaries } from "@/lib/data";
+import { getManageableProfiles, getSalaries } from "@/lib/data";
 import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -26,12 +27,18 @@ const deductionFields = [
 
 export default async function SalariesPage({ searchParams }: { searchParams: Promise<{ error?: string; month?: string; staff?: string }> }) {
   const params = await searchParams;
+  const session = await auth();
+  if (!session?.user) return null;
   const targetMonth = isValidYearMonth(params.month ?? "") ? (params.month as string) : currentMonth();
-  const [profiles, salaries] = await Promise.all([getProfiles(), getSalaries({ targetMonth })]);
-  const selectedStaff = params.staff ?? profiles[0]?.id;
-  const salary = salaries.find((row) => row.staff_id === selectedStaff);
+  const profiles = await getManageableProfiles(session.user);
+  const allowedStaffIds = new Set(profiles.map((profile) => profile.id));
+  const selectedParamStaff = params.staff && allowedStaffIds.has(params.staff) ? params.staff : null;
+  const [salaries] = await Promise.all([getSalaries({ targetMonth })]);
+  const visibleSalaries = session.user.role === "admin" ? salaries : salaries.filter((salary) => allowedStaffIds.has(salary.staff_id));
+  const selectedStaff = selectedParamStaff ?? profiles[0]?.id;
+  const salary = visibleSalaries.find((row) => row.staff_id === selectedStaff);
 
-  const exportRows = salaries.map((row) => ({
+  const exportRows = visibleSalaries.map((row) => ({
     社員: row.profiles?.name ?? row.staff_id,
     対象月: row.target_month,
     売買売上合計: row.brokerage_sales_total,

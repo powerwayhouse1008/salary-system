@@ -9,10 +9,11 @@ import { hashPassword } from "@/lib/password";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { PaymentItem, PaymentStatus } from "@/lib/types";
 
-async function requireUser(role?: "admin") {
+async function requireUser(role?: "admin" | "manager") {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (role && session.user.role !== role) redirect("/staff/contracts");
+  if (role === "admin" && session.user.role !== "admin") redirect("/staff/contracts");
+  if (role === "manager" && session.user.role !== "admin" && session.user.role !== "manager") redirect("/staff/contracts");
   return session.user;
 }
 
@@ -99,6 +100,38 @@ function employeeErrorRedirect(error: unknown): never {
   redirect(`/admin/employees?error=${encodeURIComponent(message)}`);
 }
 
+async function canManageSalaryStaff(supabase: ReturnType<typeof getSupabaseAdmin>, user: { id: string; role: string }, staffId: string) {
+  if (user.role === "admin") return true;
+  if (user.role !== "manager") return false;
+  const { data, error } = await supabase
+    .from("manager_staff_permissions")
+    .select("staff_id")
+    .eq("manager_id", user.id)
+    .eq("staff_id", staffId)
+    .maybeSingle();
+  throwIfSupabaseError(error, "給与計算の権限を確認できませんでした");
+  return Boolean(data);
+}
+
+async function saveManagerStaffPermissions(supabase: ReturnType<typeof getSupabaseAdmin>, managerId: string, role: string, formData: FormData) {
+  const { error: deleteError } = await supabase.from("manager_staff_permissions").delete().eq("manager_id", managerId);
+  throwIfSupabaseError(deleteError, "管理対象社員を更新できませんでした");
+  if (role !== "manager") return;
+
+  const staffIds = Array.from(
+    new Set(formData.getAll("managed_staff_id").map((id) => textValue(id)).filter((id): id is string => Boolean(id) && id !== managerId))
+  );
+  if (staffIds.length === 0) return;
+
+  const { error } = await supabase.from("manager_staff_permissions").insert(
+    staffIds.map((staffId) => ({
+      manager_id: managerId,
+      staff_id: staffId
+    }))
+  );
+  throwIfSupabaseError(error, "管理対象社員を保存できませんでした");
+}
+
 export async function saveEmployee(formData: FormData) {
   await requireUser("admin");
   try {
@@ -124,6 +157,7 @@ export async function saveEmployee(formData: FormData) {
     if (id) {
       const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
       throwIfSupabaseError(error, "社員を更新できませんでした");
+      await saveManagerStaffPermissions(supabase, id, payload.role, formData);
     } else {
       const { data: existingProfile, error: existingProfileError } = await supabase
         .from("profiles")
@@ -135,6 +169,7 @@ export async function saveEmployee(formData: FormData) {
       if (existingProfile?.id) {
         const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", existingProfile.id);
         throwIfSupabaseError(error, "社員を更新できませんでした");
+        await saveManagerStaffPermissions(supabase, existingProfile.id, payload.role, formData);
       } else {
         const { data: createdAuthUser, error } = await supabase.auth.admin.createUser({
           email: payload.email,
@@ -157,6 +192,7 @@ export async function saveEmployee(formData: FormData) {
 
         const { error: insertError } = await supabase.from("profiles").upsert({ id: authUser.id, ...payloadWithPassword }, { onConflict: "id" });
         throwIfSupabaseError(insertError, "社員を追加できませんでした");
+        await saveManagerStaffPermissions(supabase, authUser.id, payload.role, formData);
       }
     }
 
@@ -474,13 +510,14 @@ export async function saveFormula(formData: FormData) {
 }
 
 export async function recalculateSalary(formData: FormData) {
-  const user = await requireUser("admin");
+  const user = await requireUser("manager");
   const supabase = getSupabaseAdmin();
   const staffId = textValue(formData.get("staff_id"));
   const targetMonth = textValue(formData.get("target_month"));
   try {
     if (!staffId || !targetMonth) throw new Error("社員と対象月を選択してください。");
     if (!/^\d{4}-\d{2}$/.test(targetMonth)) throw new Error("対象月の形式が正しくありません。");
+    if (!(await canManageSalaryStaff(supabase, user, staffId))) throw new Error("この社員の給与計算を操作する権限がありません。");
     const [staffResult, formulaResult, contractsResult] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", staffId).single(),
       supabase.from("salary_formulas").select("*").eq("is_default", true).order("updated_at", { ascending: false }).limit(1),

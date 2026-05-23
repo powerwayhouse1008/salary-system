@@ -40,6 +40,37 @@ export async function getProfiles() {
   return profiles;
 }
 
+export async function getProfilesWithManagedStaff() {
+  noStore();
+  const [profiles, permissions] = await Promise.all([getProfiles(), getManagerStaffPermissions()]);
+  const managedStaffByManager = new Map<string, string[]>();
+  permissions.forEach((permission) => {
+    managedStaffByManager.set(permission.manager_id, [...(managedStaffByManager.get(permission.manager_id) ?? []), permission.staff_id]);
+  });
+  return profiles.map((profile) => ({
+    ...profile,
+    managed_staff_ids: managedStaffByManager.get(profile.id) ?? []
+  }));
+}
+
+export async function getManagerStaffPermissions(managerId?: string) {
+  noStore();
+  let query = getSupabaseAdmin().from("manager_staff_permissions").select("manager_id,staff_id");
+  if (managerId) query = query.eq("manager_id", managerId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as { manager_id: string; staff_id: string }[];
+}
+
+export async function getManageableProfiles(user: { id: string; role: string }) {
+  const profiles = await getProfiles();
+  if (user.role === "admin") return profiles;
+  if (user.role !== "manager") return [];
+  const permissions = await getManagerStaffPermissions(user.id);
+  const allowedIds = new Set(permissions.map((permission) => permission.staff_id));
+  return profiles.filter((profile) => allowedIds.has(profile.id));
+}
+
 export async function getContracts(options: { staffId?: string; limit?: number } = {}) {
  noStore();
  let query = getSupabaseAdmin().from("contracts").select("*").order("contract_date", { ascending: false }).order("created_at", { ascending: false });

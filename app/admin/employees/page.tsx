@@ -1,9 +1,9 @@
 import { saveEmployee } from "@/app/actions";
-import { getProfiles } from "@/lib/data";
+import { getProfilesWithManagedStaff } from "@/lib/data";
 
 export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
-  const employees = await getProfiles();
+  const employees = await getProfilesWithManagedStaff();
 
   return (
     <div className="space-y-6">
@@ -30,9 +30,21 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
           権限
           <select name="role" defaultValue="staff">
             <option value="staff">staff</option>
+            <option value="manager">manager</option>
             <option value="admin">admin</option>
           </select>
         </label>
+        <fieldset className="field md:col-span-4">
+          管理対象社員
+          <div className="grid max-h-40 gap-2 overflow-auto rounded-md border border-line bg-slate-50 p-3 sm:grid-cols-2 lg:grid-cols-3">
+            {employees.map((employee) => (
+              <label key={employee.id} className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input name="managed_staff_id" type="checkbox" value={employee.id} className="h-4 w-4" />
+                {employee.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <label className="field">
           売買歩合率 %
           <input name="brokerage_commission_rate" type="number" step="0.01" defaultValue="30" />
@@ -63,6 +75,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
               <th>売買歩合</th>
               <th>賃貸歩合</th>
               <th>状態</th>
+              <th>管理対象社員</th>
               <th></th>
             </tr>
           </thead>
@@ -83,6 +96,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                   <td>
                     <select form={formId} name="role" defaultValue={employee.role}>
                       <option value="staff">staff</option>
+                      <option value="manager">manager</option>
                       <option value="admin">admin</option>
                     </select>
                   </td>
@@ -94,6 +108,23 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                   </td>
                   <td>
                     <input form={formId} name="is_active" type="checkbox" defaultChecked={employee.is_active} className="h-4 w-4" />
+                  </td>
+                  <td>
+                    <div className="grid max-h-32 min-w-48 gap-1 overflow-auto rounded-md border border-line bg-slate-50 p-2 text-left">
+                      {employees.filter((staff) => staff.id !== employee.id).map((staff) => (
+                        <label key={staff.id} className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                          <input
+                            form={formId}
+                            name="managed_staff_id"
+                            type="checkbox"
+                            value={staff.id}
+                            defaultChecked={employee.managed_staff_ids?.includes(staff.id)}
+                            className="h-3.5 w-3.5"
+                          />
+                          {staff.name}
+                        </label>
+                      ))}
+                    </div>
                   </td>
                   <td>
                     <form id={formId} action={saveEmployee}>
