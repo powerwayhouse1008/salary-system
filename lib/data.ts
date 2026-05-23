@@ -47,7 +47,13 @@ export async function getProfiles() {
 
 export async function getProfilesWithManagedStaff() {
   noStore();
-  const [profiles, permissions] = await Promise.all([getProfiles(), getManagerStaffPermissions()]);
+  const profiles = await getProfiles();
+  let permissions: { manager_id: string; staff_id: string }[] = [];
+  try {
+    permissions = await getManagerStaffPermissions();
+  } catch (error) {
+    console.error("Manager staff permissions load failed", error);
+  }
   const managedStaffByManager = new Map<string, string[]>();
   permissions.forEach((permission) => {
     managedStaffByManager.set(permission.manager_id, [...(managedStaffByManager.get(permission.manager_id) ?? []), permission.staff_id]);

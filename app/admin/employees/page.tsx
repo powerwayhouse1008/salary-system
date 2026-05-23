@@ -1,9 +1,18 @@
 import { saveEmployee } from "@/app/actions";
 import { getProfilesWithManagedStaff } from "@/lib/data";
+import type { Profile } from "@/lib/types";
 
 export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
-  const employees = await getProfilesWithManagedStaff();
+  let employees: Profile[] = [];
+  let loadError: string | null = null;
+
+  try {
+    employees = await getProfilesWithManagedStaff();
+  } catch (error) {
+    console.error("EmployeesPage load failed", error);
+    loadError = "社員情報を読み込めませんでした。Supabaseのschema.sqlが適用済みか確認してください。";
+  }
 
   return (
     <div className="space-y-6">
@@ -11,6 +20,11 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       {params.error ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
           {params.error}
+        </div>
+      ) : null}
+      {loadError ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {loadError}
         </div>
       ) : null}
       <form action={saveEmployee} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-4">
