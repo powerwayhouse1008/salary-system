@@ -302,6 +302,7 @@ export async function deleteContract(formData: FormData) {
   const supabase = getSupabaseAdmin();
   const id = textValue(formData.get("id"));
   if (!id) throw new Error("契約IDがありません。");
+  await assertCanManageContracts(supabase, user, [id]);
 
   let query = supabase.from("contracts").delete().eq("id", id);
   if (user.role !== "admin") query = query.eq("staff_id", user.id);
@@ -354,11 +355,12 @@ export async function confirmPayment(formData: FormData) {
 }
 
 export async function updateContractStatus(formData: FormData) {
-  await requireUser("admin");
+  const user = await requireUser("manager");
   const supabase = getSupabaseAdmin();
   const id = textValue(formData.get("id"));
   const paymentStatus = textValue(formData.get("payment_status"));
   if (!id || !paymentStatus) throw new Error("契約IDまたは状態がありません。");
+  await assertCanManageContracts(supabase, user, [id]);
 
   const { error } = await supabase
     .from("contracts")
@@ -374,12 +376,13 @@ export async function updateContractStatus(formData: FormData) {
 }
 
 export async function updateContractPaymentItem(formData: FormData) {
-  await requireUser("admin");
+  const user = await requireUser("manager");
   const supabase = getSupabaseAdmin();
   const id = textValue(formData.get("id"));
   const key = textValue(formData.get("payment_item_key"));
   const label = textValue(formData.get("payment_item_label"));
   if (!id || !key || !label) throw new Error("契約IDまたは入金項目がありません。");
+  await assertCanManageContracts(supabase, user, [id]);
 
   const { data, error: fetchError } = await supabase.from("contracts").select("payment_items").eq("id", id).single();
   if (isMissingPaymentItemsColumn(fetchError)) {
@@ -433,7 +436,7 @@ export async function updateContractPaymentItem(formData: FormData) {
 }
 
 export async function updateContractPaymentItems(formData: FormData) {
-  await requireUser("admin");
+  const user = await requireUser("manager");
   const supabase = getSupabaseAdmin();
   const contractIds = formData.getAll("contract_id");
   const keys = formData.getAll("payment_item_key");
@@ -467,6 +470,7 @@ export async function updateContractPaymentItems(formData: FormData) {
     revalidateSalaryPages();
     return;
   }
+  await assertCanManageContracts(supabase, user, ids);
 
   const { data, error: fetchError } = await supabase.from("contracts").select("id,payment_items").in("id", ids);
   if (isMissingPaymentItemsColumn(fetchError)) {
