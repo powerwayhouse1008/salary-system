@@ -98,6 +98,12 @@ function revalidateSalaryPages() {
   revalidatePath("/staff/salary");
 }
 
+function revalidateManagementPages() {
+  revalidatePath("/admin/employees");
+  revalidatePath("/admin/contracts");
+  revalidatePath("/admin/salaries");
+}
+
 async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>, email: string) {
   const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (error) throw error;
@@ -246,7 +252,7 @@ export async function saveEmployee(formData: FormData) {
     employeeErrorRedirect(error);
   }
 
-  revalidatePath("/admin/employees");
+  revalidateManagementPages();
   redirect("/admin/employees");
 }
 

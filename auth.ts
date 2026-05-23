@@ -223,12 +223,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return session;
     },
-    authorized({ auth: session, request }) {
+    async authorized({ auth: session, request }) {
       const path = request.nextUrl.pathname;
       if (path === "/login" || path.startsWith("/api/auth")) return true;
-      const role = session?.user?.role;
-      const active = session?.user?.isActive !== false;
-      if (!session?.user || !active) return false;
+      if (!session?.user || session.user.isActive === false) return false;
+      let role = session.user.role;
+      let active = session.user.isActive !== false;
+      if (hasSupabaseAdminEnv() && session.user.id) {
+        try {
+          const { data } = await getSupabaseAdmin().from("profiles").select("role,is_active").eq("id", session.user.id).maybeSingle();
+          if (data) {
+            role = data.role as Role;
+            active = data.is_active !== false;
+          }
+        } catch (error) {
+          console.error("Authorized profile refresh failed", error);
+        }
+      }
+      if (!active) return false;
       if (path.startsWith("/admin/salaries") || path.startsWith("/admin/employees") || path.startsWith("/admin/contracts") || path.startsWith("/admin/formulas")) {
         return role === "admin" || role === "manager";
       }
