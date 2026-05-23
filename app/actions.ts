@@ -551,6 +551,7 @@ export async function updateContractPaymentItems(formData: FormData) {
   updateResults.forEach((result) => throwIfSupabaseError(result.error, "入金項目を保存できませんでした"));
   revalidatePath("/admin/contracts");
   revalidateSalaryPages();
+  redirect("/admin/contracts?saved=1");
 }
 
 export async function saveFormula(formData: FormData) {
@@ -580,6 +581,7 @@ export async function saveFormula(formData: FormData) {
   }
 
   revalidatePath("/admin/formulas");
+  redirect("/admin/formulas?saved=1");
 }
 
 export async function recalculateSalary(formData: FormData) {
@@ -642,6 +644,7 @@ export async function recalculateSalary(formData: FormData) {
 
     revalidatePath("/admin/salaries");
     revalidatePath("/staff/salary");
+    redirect(`/admin/salaries?month=${encodeURIComponent(targetMonth)}&staff=${encodeURIComponent(staffId)}&saved=1`);
   } catch (error) {
     salaryErrorRedirect(error, targetMonth, staffId);
   }
