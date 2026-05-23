@@ -317,6 +317,7 @@ export async function saveContract(formData: FormData) {
 
   revalidatePath(isAdmin ? "/admin/contracts" : "/staff/contracts");
   revalidateSalaryPages();
+  redirect(`${isAdmin ? "/admin/contracts" : "/staff/contracts"}?saved=1`);
 }
 
 export async function deleteContract(formData: FormData) {
@@ -515,7 +516,7 @@ export async function updateContractPaymentItems(formData: FormData) {
     );
     revalidatePath("/admin/contracts");
     revalidateSalaryPages();
-    return;
+    redirect("/admin/contracts?saved=1");
   }
   throwIfSupabaseError(fetchError, "入金項目を取得できませんでした");
 
