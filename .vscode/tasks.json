@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Auto Push",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File auto-push.ps1",
+      "isBackground": true,
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    }
+  ]
+}
