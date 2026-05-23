@@ -123,6 +123,8 @@ function employeeErrorRedirect(error: unknown): never {
 async function canManageSalaryStaff(supabase: ReturnType<typeof getSupabaseAdmin>, user: { id: string; role: string }, staffId: string) {
   if (user.role === "admin") return true;
   if (user.role !== "manager") return false;
+  if (staffId === user.id) return true;
+  if ((await getManagedStaffIds(supabase, user.id)).includes(staffId)) return true;
   const { data, error } = await supabase
     .from("manager_staff_permissions")
     .select("staff_id")
