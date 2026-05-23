@@ -106,7 +106,11 @@ async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>
 
 function employeeErrorRedirect(error: unknown): never {
   console.error("saveEmployee failed", error);
-  const message = error instanceof Error ? error.message : "社員を保存できませんでした。";
+  const message = isProfilesRoleConstraintError(error)
+    ? "社員を更新できませんでした。Supabaseでprofiles_role_checkを更新し、roleにmanagerを許可してください。"
+    : error instanceof Error
+      ? error.message
+      : "社員を保存できませんでした。";
   redirect(`/admin/employees?error=${encodeURIComponent(message)}`);
 }
 
@@ -158,10 +162,12 @@ export async function saveEmployee(formData: FormData) {
     const id = textValue(formData.get("id"));
     const rawPassword = textValue(formData.get("password"));
     const password = rawPassword?.trim() || null;
+    const role = textValue(formData.get("role")) ?? "staff";
+    if (!["admin", "manager", "staff"].includes(role)) throw new Error("権限の値が正しくありません。");
     const payload = {
       name: textValue(formData.get("name")) ?? "",
       email: (textValue(formData.get("email")) ?? "").toLowerCase(),
-      role: textValue(formData.get("role")) ?? "staff",
+      role,
       brokerage_commission_rate: numberValue(formData.get("brokerage_commission_rate")),
       ad_commission_rate: numberValue(formData.get("ad_commission_rate")),
       is_active: formData.get("is_active") === "on"
