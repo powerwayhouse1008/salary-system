@@ -48,17 +48,6 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
             <option value="admin">admin</option>
           </select>
         </label>
-        <fieldset className="field md:col-span-4">
-          管理対象社員
-          <div className="grid max-h-40 gap-2 overflow-auto rounded-md border border-line bg-slate-50 p-3 sm:grid-cols-2 lg:grid-cols-3">
-            {employees.map((employee) => (
-              <label key={employee.id} className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                <input name="managed_staff_id" type="checkbox" value={employee.id} className="h-4 w-4" />
-                {employee.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
         <label className="field">
           売買歩合率 %
           <input name="brokerage_commission_rate" type="number" step="0.01" defaultValue="30" />
@@ -124,21 +113,23 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                     <input form={formId} name="is_active" type="checkbox" defaultChecked={employee.is_active} className="h-4 w-4" />
                   </td>
                   <td>
-                    <div className="grid max-h-32 min-w-48 gap-1 overflow-auto rounded-md border border-line bg-slate-50 p-2 text-left">
-                      {employees.filter((staff) => staff.id !== employee.id).map((staff) => (
-                        <label key={staff.id} className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                          <input
-                            form={formId}
-                            name="managed_staff_id"
-                            type="checkbox"
-                            value={staff.id}
-                            defaultChecked={employee.managed_staff_ids?.includes(staff.id)}
-                            className="h-3.5 w-3.5"
-                          />
-                          {staff.name}
-                        </label>
-                      ))}
-                    </div>
+                    {employee.role === "admin" ? (
+                      <div className="grid max-h-32 min-w-48 gap-1 overflow-auto rounded-md border border-line bg-slate-50 p-2 text-left">
+                        {employees.filter((staff) => staff.id !== employee.id).map((staff) => (
+                          <label key={staff.id} className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                            <input
+                              form={formId}
+                              name="managed_staff_id"
+                              type="checkbox"
+                              value={staff.id}
+                              defaultChecked={employee.managed_staff_ids?.includes(staff.id)}
+                              className="h-3.5 w-3.5"
+                            />
+                            {staff.name}
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
                   </td>
                   <td>
                     <form id={formId} action={saveEmployee}>
