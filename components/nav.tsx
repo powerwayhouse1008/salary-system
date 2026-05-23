@@ -10,7 +10,10 @@ const adminLinks = [
   ["計算式", "/admin/formulas"]
 ];
 
-const managerLinks = [["給与計算", "/admin/salaries"]];
+const managerLinks = [
+  ["社員", "/admin/employees"],
+  ["給与計算", "/admin/salaries"]
+];
 
 const staffLinks = [
   ["契約入力", "/staff/contracts"],
