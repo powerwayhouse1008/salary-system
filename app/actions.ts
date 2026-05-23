@@ -331,7 +331,7 @@ export async function deleteSelectedContracts(formData: FormData) {
 }
 
 export async function confirmPayment(formData: FormData) {
-  const user = await requireUser("admin");
+  const user = await requireUser("manager");
   const supabase = getSupabaseAdmin();
   const id = textValue(formData.get("id"));
   if (!id) throw new Error("契約IDがありません。");
