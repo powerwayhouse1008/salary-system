@@ -253,7 +253,7 @@ export async function saveEmployee(formData: FormData) {
   }
 
   revalidateManagementPages();
-  redirect("/admin/employees");
+  redirect("/admin/employees?saved=1");
 }
 
 export async function saveContract(formData: FormData) {

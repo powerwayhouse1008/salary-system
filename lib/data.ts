@@ -83,6 +83,7 @@ export async function getManageableProfiles(user: { id: string; role: string }) 
   if (user.role !== "manager") return [];
   const permissions = await getManagerStaffPermissions(user.id);
   const allowedIds = new Set(permissions.map((permission) => permission.staff_id));
+  allowedIds.add(user.id);
   return profiles.filter((profile) => allowedIds.has(profile.id));
 }
 
