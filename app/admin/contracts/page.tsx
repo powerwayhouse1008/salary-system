@@ -56,8 +56,7 @@ function contractPaymentLines(contract: Contract): ContractPaymentLine[] {
 
 function contractManagementLines(contract: Contract): ContractManagementLine[] {
   const infoLines = [
-    { key: "residence_status", label: "在留資格", value: contract.residence_status },
-    { key: "phone", label: "携帯電話", value: contract.phone },
+
     { key: "address", label: "住所", value: contract.address },
     { key: "rent", label: "賃料(物件価額）", value: contract.rent ? yen.format(contract.rent) : null },
     { key: "management_company", label: "管理会社", value: contract.management_company }
