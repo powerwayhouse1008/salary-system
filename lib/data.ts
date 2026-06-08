@@ -10,39 +10,9 @@ function isMissingManagerPermissionsTable(error: { code?: string; message?: stri
 export async function getProfiles() {
   noStore();
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.from("profiles").select("*").order("name");
+  const { data, error } = await supabase.from("employee_profiles").select("*").order("name");
   if (error) throw error;
-  const profiles = (data ?? []) as Profile[];
-
-  try {
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (authError) throw authError;
-
-    const existingIds = new Set(profiles.map((profile) => profile.id));
-    const missingProfiles = authUsers.users
-      .filter((user) => user.email && !existingIds.has(user.id))
-      .map((user) => ({
-        id: user.id,
-        name: (user.user_metadata?.name as string | undefined) ?? user.email ?? "社員",
-        email: user.email ?? "",
-        role: "staff",
-        brokerage_commission_rate: 0,
-        ad_commission_rate: 0,
-        is_active: true
-      }));
-
-    if (missingProfiles.length) {
-      const { error: syncError } = await supabase.from("profiles").upsert(missingProfiles, { onConflict: "id" });
-      if (syncError) throw syncError;
-      const { data: synced, error: syncedError } = await supabase.from("profiles").select("*").order("name");
-      if (syncedError) throw syncedError;
-      return (synced ?? []) as Profile[];
-    }
-  } catch (syncError) {
-    console.error("Profile sync from auth users failed", syncError);
-  }
-
-  return profiles;
+  return (data ?? []) as Profile[];
 }
 
 export async function getProfilesWithManagedStaff() {
@@ -72,13 +42,7 @@ export async function getManagerStaffPermissions(managerId?: string) {
   const { data, error } = await query;
   if (isMissingManagerPermissionsTable(error)) {
     console.warn("manager_staff_permissions table is missing. Run supabase/schema.sql to enable manager permissions.");
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (authError) throw authError;
-    return authUsers.users.flatMap((user) => {
-      if (managerId && user.id !== managerId) return [];
-      const managedStaffIds = Array.isArray(user.app_metadata?.managed_staff_ids) ? (user.app_metadata.managed_staff_ids as string[]) : [];
-      return managedStaffIds.map((staffId) => ({ manager_id: user.id, staff_id: staffId }));
-    });
+    return [];
   }
   if (error) throw error;
   return (data ?? []) as { manager_id: string; staff_id: string }[];
@@ -134,7 +98,7 @@ export async function getDashboardStats(targetMonth: string) {
   const [{ data: contracts }, { data: salaries }, { data: profiles }] = await Promise.all([
     getSupabaseAdmin().from("contracts").select("*").gte("contract_date", start).lt("contract_date", end),
     getSupabaseAdmin().from("salary_monthly").select("*").eq("target_month", targetMonth),
-    getSupabaseAdmin().from("profiles").select("*").order("name")
+    getSupabaseAdmin().from("employee_profiles").select("*").order("name")
   ]);
 
   const allContracts = (contracts ?? []) as Contract[];
@@ -171,7 +135,7 @@ export async function getDashboardStats(targetMonth: string) {
 async function withProfiles<T extends { profiles?: Pick<Profile, "name" | "email"> | null }>(rows: T[], getStaffId: (row: T) => string) {
   const ids = Array.from(new Set(rows.map(getStaffId).filter(Boolean)));
   if (ids.length === 0) return rows;
-  const { data: profiles, error } = await getSupabaseAdmin().from("profiles").select("id,name,email").in("id", ids);
+  const { data: profiles, error } = await getSupabaseAdmin().from("employee_profiles").select("id,name,email").in("id", ids);
   if (error) throw error;
   const map = new Map((profiles ?? []).map((profile) => [profile.id as string, { name: profile.name as string, email: profile.email as string }]));
   return rows.map((row) => ({ ...row, profiles: map.get(getStaffId(row)) ?? null }));

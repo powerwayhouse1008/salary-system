@@ -56,7 +56,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (login === "admin") {
             const { data: adminProfiles } = await supabase
-              .from("profiles")
+              .from("employee_profiles")
               .select("*")
               .eq("role", "admin")
               .order("created_at", { ascending: true });
@@ -67,22 +67,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               adminProfiles?.[0] ??
               null;
           } else {
-            const result = await supabase.from("profiles").select("*").eq("email", email).maybeSingle();
+            const result = await supabase.from("employee_profiles").select("*").eq("email", email).maybeSingle();
             profile = result.data;
           }
 
           if (login === "admin" && !profile) {
-            const { data: authUser, error } = await supabase.auth.admin.createUser({
-              email,
-              email_confirm: true,
-              user_metadata: { name: "Admin" }
-            });
-            if (error || !authUser.user) return null;
-
             const { data: created } = await supabase
-              .from("profiles")
+              .from("employee_profiles")
               .insert({
-                id: authUser.user.id,
+                id: crypto.randomUUID(),
                 name: "Admin",
                 email,
                 password_hash: await hashPassword(localAdminPassword),
@@ -103,12 +96,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!passwordMatches) return null;
 
           if (isInitialAdmin) {
-            await supabase.from("profiles").update({ password_hash: await hashPassword(password) }).eq("id", profile.id);
+            await supabase.from("employee_profiles").update({ password_hash: await hashPassword(password) }).eq("id", profile.id);
           }
            
 
           await supabase
-            .from("profiles")
+            .from("employee_profiles")
             .update({
              last_login_at: new Date().toISOString()
             })
@@ -147,26 +140,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (allowedDomains.length && (!domain || !allowedDomains.includes(domain))) return false;
       if (!hasSupabaseAdminEnv()) return "/login?error=ServerConfig";
       const supabase = getSupabaseAdmin();
-      const { data: existing } = await supabase.from("profiles").select("*").eq("email", email).maybeSingle();
+      const { data: existing } = await supabase.from("employee_profiles").select("*").eq("email", email).maybeSingle();
 
       if (!existing && !autoCreateProfile) return "/login?error=AccessPending";
 
       if (!existing) {
         const role: Role = defaultAdminEmail === email ? "admin" : "staff";
-        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-          email,
-          email_confirm: true,
-          user_metadata: {
-            name: profile.name ?? email,
-            microsoft_id: profile.sub,
-            avatar_url: profile.picture
-          }
-        });
-
-        if (authError || !authUser.user) return false;
-
-        await supabase.from("profiles").insert({
-          id: authUser.user.id,
+        await supabase.from("employee_profiles").insert({
+          id: crypto.randomUUID(),
           microsoft_id: profile.sub,
           name: profile.name ?? email,
           email,
@@ -176,7 +157,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
       } else {
         await supabase
-          .from("profiles")
+          .from("employee_profiles")
           .update({
             microsoft_id: existing.microsoft_id ?? profile.sub,
             name: profile.name ?? existing.name,
@@ -202,7 +183,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
      if (!hasSupabaseAdminEnv()) return token;
       try {
         const supabase = getSupabaseAdmin();
-        const { data } = await supabase.from("profiles").select("id, role, is_active, name").eq("email", email).maybeSingle();
+        const { data } = await supabase.from("employee_profiles").select("id, role, is_active, name").eq("email", email).maybeSingle();
         if (data) {
           token.sub = data.id;
           token.role = data.role;
@@ -231,7 +212,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       let active: boolean = true;
       if (hasSupabaseAdminEnv() && session.user.id) {
         try {
-          const { data } = await getSupabaseAdmin().from("profiles").select("role,is_active").eq("id", session.user.id).maybeSingle();
+          const { data } = await getSupabaseAdmin().from("employee_profiles").select("role,is_active").eq("id", session.user.id).maybeSingle();
           if (data) {
             role = data.role as Role;
             active = data.is_active !== false;

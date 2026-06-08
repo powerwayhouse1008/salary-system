@@ -33,7 +33,7 @@ function isMissingManagerPermissionsTable(error: { code?: string; message?: stri
 
 function isProfilesRoleConstraintError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
-  return message.includes("profiles_role_check") || (message.includes("violates check constraint") && message.includes("profiles"));
+  return message.includes("employee_profiles_role_check") || (message.includes("violates check constraint") && message.includes("profiles"));
 }
 
 function salaryErrorRedirect(error: unknown, targetMonth: string | null, staffId: string | null): never {
@@ -58,11 +58,6 @@ function otherIncomeItems(formData: FormData) {
       rate: numberValue(rates[index] ?? null)
     }))
     .filter((item) => item.name || item.amount > 0 || item.rate > 0);
-}
-
-function isExistingAuthUserError(error: { message?: string } | null) {
-  const message = error?.message?.toLowerCase() ?? "";
-  return message.includes("already") || message.includes("registered") || message.includes("exists");
 }
 
 const paymentStatuses: PaymentStatus[] = ["未確認", "入金待ち", "一部入金", "入金済み", "返金あり", "キャンセル"];
@@ -104,16 +99,10 @@ function revalidateManagementPages() {
   revalidatePath("/admin/salaries");
 }
 
-async function findAuthUserByEmail(supabase: ReturnType<typeof getSupabaseAdmin>, email: string) {
-  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (error) throw error;
-  return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
-}
-
 function employeeErrorRedirect(error: unknown): never {
   console.error("saveEmployee failed", error);
   const message = isProfilesRoleConstraintError(error)
-    ? "社員を更新できませんでした。Supabaseでprofiles_role_checkを更新し、roleにmanagerを許可してください。"
+    ? "社員を更新できませんでした。Supabaseでemployee_profiles_role_checkを更新し、roleにmanagerを許可してください。"
     : error instanceof Error
       ? error.message
       : "社員を保存できませんでした。";
@@ -139,9 +128,7 @@ async function canManageSalaryStaff(supabase: ReturnType<typeof getSupabaseAdmin
 async function getManagedStaffIds(supabase: ReturnType<typeof getSupabaseAdmin>, managerId: string) {
   const { data, error } = await supabase.from("manager_staff_permissions").select("staff_id").eq("manager_id", managerId);
   if (isMissingManagerPermissionsTable(error)) {
-    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(managerId);
-    if (authError) throw authError;
-    return Array.isArray(authUser.user?.app_metadata?.managed_staff_ids) ? (authUser.user.app_metadata.managed_staff_ids as string[]) : [];
+    return [];
   }
   throwIfSupabaseError(error, "管理対象社員を確認できませんでした");
   return (data ?? []).map((row) => row.staff_id as string);
@@ -168,18 +155,7 @@ async function saveManagerStaffPermissions(supabase: ReturnType<typeof getSupaba
   );
   const { error: deleteError } = await supabase.from("manager_staff_permissions").delete().eq("manager_id", managerId);
   if (isMissingManagerPermissionsTable(deleteError)) {
-    const { data: authUser, error: getUserError } = await supabase.auth.admin.getUserById(managerId);
-    if (getUserError) throw getUserError;
-    const { error: metadataError } = await supabase.auth.admin.updateUserById(managerId, {
-      app_metadata: {
-        ...(authUser.user?.app_metadata ?? {}),
-        managed_staff_ids: role === "manager" ? staffIds : []
-      }
-    });
-    throwIfSupabaseError(metadataError, "管理対象社員を保存できませんでした");
-    return;
-    if (role === "manager") throw new Error("管理対象社員を保存できませんでした。Supabaseでmanager_staff_permissionsテーブルを作成してください。");
-    return;
+    throw new Error("管理対象社員を保存できませんでした。Supabaseでmanager_staff_permissionsテーブルを作成してください。");
   }
   throwIfSupabaseError(deleteError, "管理対象社員を更新できませんでした");
   if (role !== "manager") return;
@@ -223,44 +199,26 @@ export async function saveEmployee(formData: FormData) {
     };
 
     if (id) {
-      const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", id);
+      const { error } = await supabase.from("employee_profiles").update(payloadWithPassword).eq("id", id);
       throwIfSupabaseError(error, "社員を更新できませんでした");
       await saveManagerStaffPermissions(supabase, id, payload.role, formData);
     } else {
       const { data: existingProfile, error: existingProfileError } = await supabase
-        .from("profiles")
+        .from("employee_profiles")
         .select("id")
         .ilike("email", payload.email)
         .maybeSingle();
       throwIfSupabaseError(existingProfileError, "社員情報を確認できませんでした");
 
       if (existingProfile?.id) {
-        const { error } = await supabase.from("profiles").update(payloadWithPassword).eq("id", existingProfile.id);
+        const { error } = await supabase.from("employee_profiles").update(payloadWithPassword).eq("id", existingProfile.id);
         throwIfSupabaseError(error, "社員を更新できませんでした");
         await saveManagerStaffPermissions(supabase, existingProfile.id, payload.role, formData);
       } else {
-        const { data: createdAuthUser, error } = await supabase.auth.admin.createUser({
-          email: payload.email,
-          password: password ?? crypto.randomUUID(),
-          email_confirm: true,
-          user_metadata: { name: payload.name }
-        });
-
-        let authUser = createdAuthUser?.user ?? null;
-        if (error || !authUser) {
-          if (!isExistingAuthUserError(error)) throw error ?? new Error("社員アカウントを作成できません。");
-          authUser = await findAuthUserByEmail(supabase, payload.email);
-          if (!authUser) throw error ?? new Error("既存の社員アカウントを確認できませんでした。");
-          const { error: updateAuthError } = await supabase.auth.admin.updateUserById(authUser.id, {
-            ...(password ? { password } : {}),
-            user_metadata: { name: payload.name }
-          });
-          if (updateAuthError) throw updateAuthError;
-        }
-
-        const { error: insertError } = await supabase.from("profiles").upsert({ id: authUser.id, ...payloadWithPassword }, { onConflict: "id" });
+        const employeeId = crypto.randomUUID();
+        const { error: insertError } = await supabase.from("employee_profiles").insert({ id: employeeId, ...payloadWithPassword });
         throwIfSupabaseError(insertError, "社員を追加できませんでした");
-        await saveManagerStaffPermissions(supabase, authUser.id, payload.role, formData);
+        await saveManagerStaffPermissions(supabase, employeeId, payload.role, formData);
       }
     }
 
@@ -594,7 +552,7 @@ export async function recalculateSalary(formData: FormData) {
     if (!/^\d{4}-\d{2}$/.test(targetMonth)) throw new Error("対象月の形式が正しくありません。");
     if (!(await canManageSalaryStaff(supabase, user, staffId))) throw new Error("この社員の給与計算を操作する権限がありません。");
     const [staffResult, formulaResult, contractsResult] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", staffId).single(),
+      supabase.from("employee_profiles").select("*").eq("id", staffId).single(),
       supabase.from("salary_formulas").select("*").eq("is_default", true).order("updated_at", { ascending: false }).limit(1),
       supabase
         .from("contracts")

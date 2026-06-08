@@ -1,7 +1,7 @@
 create extension if not exists "pgcrypto";
 
-create table if not exists profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
+create table if not exists employee_profiles (
+  id uuid primary key default gen_random_uuid(),
   microsoft_id text,
   avatar_url text,
   name text not null,
@@ -16,11 +16,11 @@ create table if not exists profiles (
   updated_at timestamptz default now()
 );
 
-alter table profiles add column if not exists password_hash text;
+alter table employee_profiles add column if not exists password_hash text;
 
 create table if not exists manager_staff_permissions (
-  manager_id uuid not null references profiles(id) on delete cascade,
-  staff_id uuid not null references profiles(id) on delete cascade,
+  manager_id uuid not null references employee_profiles(id) on delete cascade,
+  staff_id uuid not null references employee_profiles(id) on delete cascade,
   created_at timestamptz default now(),
   primary key (manager_id, staff_id),
   check (manager_id <> staff_id)
@@ -40,7 +40,7 @@ create table if not exists salary_formulas (
 
 create table if not exists contracts (
   id uuid primary key default gen_random_uuid(),
-  staff_id uuid references profiles(id),
+  staff_id uuid references employee_profiles(id),
   contract_date date,
   contract_number text,
   customer_name text,
@@ -67,7 +67,7 @@ create table if not exists contracts (
   payment_items jsonb default '[]'::jsonb,
   payment_status text default '未確認' check (payment_status in ('未確認', '入金待ち', '一部入金', '入金済み', '返金あり', 'キャンセル')),
   payment_confirmed_at timestamptz,
-  payment_confirmed_by uuid references profiles(id),
+  payment_confirmed_by uuid references employee_profiles(id),
   payment_note text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -75,7 +75,7 @@ create table if not exists contracts (
 
 create table if not exists salary_monthly (
   id uuid primary key default gen_random_uuid(),
-  staff_id uuid references profiles(id),
+  staff_id uuid references employee_profiles(id),
   target_month text not null,
   brokerage_sales_total numeric default 0,
   ad_sales_total numeric default 0,
@@ -102,13 +102,13 @@ create table if not exists salary_monthly (
   remaining_amount numeric default 0,
   status text default '下書き' check (status in ('下書き', '確定', '支払済み')),
   confirmed_at timestamptz,
-  confirmed_by uuid references profiles(id),
+  confirmed_by uuid references employee_profiles(id),
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   unique(staff_id, target_month)
 );
 
-alter table profiles enable row level security;
+alter table employee_profiles enable row level security;
 alter table contracts enable row level security;
 alter table salary_formulas enable row level security;
 alter table salary_monthly enable row level security;
@@ -120,7 +120,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select exists(select 1 from profiles where id = auth.uid() and role = 'admin' and is_active = true);
+  select exists(select 1 from employee_profiles where id = auth.uid() and role = 'admin' and is_active = true);
 $$;
 
 create or replace function public.can_manage_staff(target_staff_id uuid)
@@ -132,7 +132,7 @@ as $$
   select exists(
     select 1
     from manager_staff_permissions msp
-    join profiles manager on manager.id = msp.manager_id
+    join employee_profiles manager on manager.id = msp.manager_id
     where msp.manager_id = auth.uid()
       and msp.staff_id = target_staff_id
       and manager.role = 'manager'
@@ -140,11 +140,11 @@ as $$
   );
 $$;
 
-drop policy if exists "profiles self read" on profiles;
-create policy "profiles self read" on profiles for select using (id = auth.uid() or public.is_admin());
+drop policy if exists "employee_profiles self read" on employee_profiles;
+create policy "employee_profiles self read" on employee_profiles for select using (id = auth.uid() or public.is_admin());
 
-drop policy if exists "profiles admin write" on profiles;
-create policy "profiles admin write" on profiles for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "employee_profiles admin write" on employee_profiles;
+create policy "employee_profiles admin write" on employee_profiles for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "contracts staff read own" on contracts;
 create policy "contracts staff read own" on contracts for select using (staff_id = auth.uid() or public.is_admin() or public.can_manage_staff(staff_id));
@@ -182,40 +182,46 @@ values (
 on conflict do nothing;
 
 -- Backward-compatible migrations for existing projects. Re-run this file after deploys.
-alter table profiles add column if not exists microsoft_id text;
-alter table profiles add column if not exists avatar_url text;
-alter table profiles add column if not exists password_hash text;
+alter table employee_profiles add column if not exists microsoft_id text;
+alter table employee_profiles add column if not exists avatar_url text;
+alter table employee_profiles add column if not exists password_hash text;
 
 create table if not exists manager_staff_permissions (
-  manager_id uuid not null references profiles(id) on delete cascade,
-  staff_id uuid not null references profiles(id) on delete cascade,
+  manager_id uuid not null references employee_profiles(id) on delete cascade,
+  staff_id uuid not null references employee_profiles(id) on delete cascade,
   created_at timestamptz default now(),
   primary key (manager_id, staff_id),
   check (manager_id <> staff_id)
 );
-alter table profiles add column if not exists role text default 'staff';
-alter table profiles add column if not exists brokerage_commission_rate numeric default 0;
-alter table profiles add column if not exists ad_commission_rate numeric default 0;
-alter table profiles add column if not exists is_active boolean default true;
-alter table profiles add column if not exists last_login_at timestamptz;
-alter table profiles add column if not exists created_at timestamptz default now();
-alter table profiles add column if not exists updated_at timestamptz default now();
-alter table profiles drop column if exists phone;
+alter table employee_profiles add column if not exists role text default 'staff';
+alter table employee_profiles add column if not exists brokerage_commission_rate numeric default 0;
+alter table employee_profiles add column if not exists ad_commission_rate numeric default 0;
+alter table employee_profiles add column if not exists is_active boolean default true;
+alter table employee_profiles add column if not exists last_login_at timestamptz;
+alter table employee_profiles add column if not exists created_at timestamptz default now();
+alter table employee_profiles add column if not exists updated_at timestamptz default now();
+alter table employee_profiles drop column if exists phone;
 
-update profiles set role = 'staff' where role is null or role not in ('admin', 'manager', 'staff');
-alter table profiles alter column role set default 'staff';
-alter table profiles drop constraint if exists profiles_role_check;
-alter table profiles add constraint profiles_role_check check (role in ('admin', 'manager', 'staff'));
+update employee_profiles set role = 'staff' where role is null or role not in ('admin', 'manager', 'staff');
+alter table employee_profiles alter column role set default 'staff';
+alter table employee_profiles drop constraint if exists profiles_role_check;
+alter table employee_profiles drop constraint if exists employee_profiles_role_check;
+alter table employee_profiles add constraint employee_profiles_role_check check (role in ('admin', 'manager', 'staff'));
 
 create table if not exists manager_staff_permissions (
-  manager_id uuid not null references profiles(id) on delete cascade,
-  staff_id uuid not null references profiles(id) on delete cascade,
+  manager_id uuid not null references employee_profiles(id) on delete cascade,
+  staff_id uuid not null references employee_profiles(id) on delete cascade,
   created_at timestamptz default now(),
   primary key (manager_id, staff_id),
   check (manager_id <> staff_id)
 );
 
 alter table manager_staff_permissions enable row level security;
+
+alter table manager_staff_permissions drop constraint if exists manager_staff_permissions_manager_id_fkey;
+alter table manager_staff_permissions drop constraint if exists manager_staff_permissions_staff_id_fkey;
+alter table manager_staff_permissions add constraint manager_staff_permissions_manager_id_fkey foreign key (manager_id) references employee_profiles(id) on delete cascade;
+alter table manager_staff_permissions add constraint manager_staff_permissions_staff_id_fkey foreign key (staff_id) references employee_profiles(id) on delete cascade;
 
 alter table salary_formulas add column if not exists formula_total text;
 alter table salary_formulas add column if not exists formula_deduction text;
@@ -257,6 +263,9 @@ alter table contracts add column if not exists payment_confirmed_at timestamptz;
 alter table contracts add column if not exists created_at timestamptz default now();
 alter table contracts add column if not exists updated_at timestamptz default now();
 
+alter table contracts drop constraint if exists contracts_staff_id_fkey;
+alter table contracts add constraint contracts_staff_id_fkey foreign key (staff_id) references employee_profiles(id);
+
 alter table contracts drop constraint if exists contracts_payment_status_check;
 update contracts
 set payment_status = '未確認'
@@ -267,7 +276,7 @@ alter table contracts add constraint contracts_payment_status_check
   check (payment_status in ('未確認', '入金待ち', '一部入金', '入金済み', '返金あり', 'キャンセル'));
 
 alter table contracts drop constraint if exists contracts_payment_confirmed_by_fkey;
-alter table contracts add constraint contracts_payment_confirmed_by_fkey foreign key (payment_confirmed_by) references profiles(id);
+alter table contracts add constraint contracts_payment_confirmed_by_fkey foreign key (payment_confirmed_by) references employee_profiles(id);
 
 alter table salary_monthly add column if not exists staff_id uuid;
 alter table salary_monthly add column if not exists target_month text;
@@ -300,6 +309,9 @@ alter table salary_monthly add column if not exists confirmed_at timestamptz;
 alter table salary_monthly add column if not exists created_at timestamptz default now();
 alter table salary_monthly add column if not exists updated_at timestamptz default now();
 
+alter table salary_monthly drop constraint if exists salary_monthly_staff_id_fkey;
+alter table salary_monthly add constraint salary_monthly_staff_id_fkey foreign key (staff_id) references employee_profiles(id);
+
 alter table salary_monthly drop constraint if exists salary_monthly_status_check;
 update salary_monthly
 set status = '下書き'
@@ -308,7 +320,7 @@ alter table salary_monthly alter column status set default '下書き';
 alter table salary_monthly add constraint salary_monthly_status_check check (status in ('下書き', '確定', '支払済み'));
 
 alter table salary_monthly drop constraint if exists salary_monthly_confirmed_by_fkey;
-alter table salary_monthly add constraint salary_monthly_confirmed_by_fkey foreign key (confirmed_by) references profiles(id);
+alter table salary_monthly add constraint salary_monthly_confirmed_by_fkey foreign key (confirmed_by) references employee_profiles(id);
 
 create unique index if not exists salary_monthly_staff_target_month_key on salary_monthly(staff_id, target_month);
 
