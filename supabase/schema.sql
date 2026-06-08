@@ -218,6 +218,93 @@ create table if not exists manager_staff_permissions (
 
 alter table manager_staff_permissions enable row level security;
 
+do $$
+begin
+  if to_regclass('public.profiles') is not null then
+    insert into employee_profiles (
+      id,
+      microsoft_id,
+      avatar_url,
+      name,
+      email,
+      password_hash,
+      role,
+      brokerage_commission_rate,
+      ad_commission_rate,
+      is_active,
+      last_login_at,
+      created_at,
+      updated_at
+    )
+    select
+      p.id,
+      p.microsoft_id,
+      p.avatar_url,
+      p.name,
+      p.email,
+      p.password_hash,
+      p.role,
+      p.brokerage_commission_rate,
+      p.ad_commission_rate,
+      p.is_active,
+      p.last_login_at,
+      p.created_at,
+      p.updated_at
+    from profiles p
+    where p.id in (
+      select staff_id from contracts where staff_id is not null
+      union
+      select payment_confirmed_by from contracts where payment_confirmed_by is not null
+      union
+      select staff_id from salary_monthly where staff_id is not null
+      union
+      select confirmed_by from salary_monthly where confirmed_by is not null
+      union
+      select manager_id from manager_staff_permissions where manager_id is not null
+      union
+      select staff_id from manager_staff_permissions where staff_id is not null
+    )
+    on conflict (id) do update set
+      microsoft_id = excluded.microsoft_id,
+      avatar_url = excluded.avatar_url,
+      name = excluded.name,
+      email = excluded.email,
+      password_hash = excluded.password_hash,
+      role = excluded.role,
+      brokerage_commission_rate = excluded.brokerage_commission_rate,
+      ad_commission_rate = excluded.ad_commission_rate,
+      is_active = excluded.is_active,
+      last_login_at = excluded.last_login_at,
+      updated_at = excluded.updated_at;
+  end if;
+end $$;
+
+insert into employee_profiles (id, name, email, role, brokerage_commission_rate, ad_commission_rate, is_active)
+select
+  referenced.id,
+  '未登録社員',
+  referenced.id::text || '@missing.employee.local',
+  'staff',
+  0,
+  0,
+  true
+from (
+  select staff_id as id from contracts where staff_id is not null
+  union
+  select payment_confirmed_by as id from contracts where payment_confirmed_by is not null
+  union
+  select staff_id as id from salary_monthly where staff_id is not null
+  union
+  select confirmed_by as id from salary_monthly where confirmed_by is not null
+  union
+  select manager_id as id from manager_staff_permissions where manager_id is not null
+  union
+  select staff_id as id from manager_staff_permissions where staff_id is not null
+) referenced
+left join employee_profiles employee on employee.id = referenced.id
+where employee.id is null
+on conflict (id) do nothing;
+
 alter table manager_staff_permissions drop constraint if exists manager_staff_permissions_manager_id_fkey;
 alter table manager_staff_permissions drop constraint if exists manager_staff_permissions_staff_id_fkey;
 alter table manager_staff_permissions add constraint manager_staff_permissions_manager_id_fkey foreign key (manager_id) references employee_profiles(id) on delete cascade;
