@@ -6,6 +6,7 @@ import { SavedToast } from "@/components/saved-toast";
 import { SalaryBadge } from "@/components/status-badge";
 import { getManageableProfiles, getSalaries } from "@/lib/data";
 import { currentMonth, isValidYearMonth, yen } from "@/lib/format";
+import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -119,31 +120,151 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
               <button className="btn" type="submit" name="status" value="確定">確定</button>
             </div>
           </section>
-          <section className="table-wrap">
+          <section className="overflow-x-auto rounded-md border border-blue-300 bg-white p-3">
             {isUsingPreviousInput ? (
-              <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+              <div className="mb-3 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
                 {latestSalary?.target_month} の前回入力を表示中です。保存すると {targetMonth} の給与として登録されます。
               </div>
             ) : null}
-            <table className="data-table">
-              <tbody>
-                <tr><th>社員</th><td>{selectedProfile?.name ?? selectedStaff}</td></tr>
-                <tr><th>対象月</th><td>{targetMonth}</td></tr>
-                <tr><th>売買売上合計</th><td>{yen.format(salary?.brokerage_sales_total ?? 0)}</td></tr>
-                <tr><th>賃貸売上合計</th><td>{yen.format(salary?.ad_sales_total ?? 0)}</td></tr>
-                <tr><th>売買歩合</th><td>{yen.format(salary?.brokerage_commission ?? 0)}</td></tr>
-                <tr><th>賃貸歩合</th><td>{yen.format(salary?.ad_commission ?? 0)}</td></tr>
-                <tr><th>その他収入合計</th><td>{yen.format(salary?.other_income_total ?? 0)}</td></tr>
-                <tr><th>その他収入歩合</th><td>{yen.format(salary?.other_income_commission ?? 0)}</td></tr>
-                <tr><th>合計</th><td>{yen.format(salary?.total_amount ?? 0)}</td></tr>
-                <tr><th>振り込み金額</th><td className="font-bold">{yen.format(salary?.transfer_amount ?? 0)}</td></tr>
-                <tr><th>残り金額</th><td>{yen.format(salary?.remaining_amount ?? 0)}</td></tr>
-                <tr><th>状態</th><td>{salary ? <SalaryBadge status={salary.status} /> : "未作成"}</td></tr>
-              </tbody>
-            </table>
+            <div className="min-w-[760px] text-[13px] text-slate-900">
+              <div className="mb-3 grid grid-cols-[1fr_220px] gap-4">
+                <div className="rounded-md border-2 border-blue-300 px-5 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-lg font-bold">{Number(targetMonth.slice(5, 7))}月分給与</div>
+                      <div className="mt-4 grid grid-cols-[56px_1fr] gap-x-3 gap-y-1 text-sm">
+                        <span className="font-semibold text-blue-900">氏名</span>
+                        <span>{selectedProfile?.name ?? selectedStaff} 様</span>
+                        <span className="font-semibold text-blue-900">所属</span>
+                        <span>{selectedProfile?.email ?? "-"}</span>
+                      </div>
+                    </div>
+                    <div className="text-xl font-bold text-blue-700">明細書</div>
+                  </div>
+                </div>
+                <div className="grid content-start gap-3">
+                  <div className="grid grid-cols-[70px_1fr] items-end gap-2 border-b-2 border-blue-300 pb-1">
+                    <span className="font-semibold text-blue-700">支給日</span>
+                    <span className="text-right">{targetMonth.slice(0, 4)} 年 {Number(targetMonth.slice(5, 7))} 月 25 日</span>
+                  </div>
+                  <div className="ml-auto h-16 w-16 rounded-md border-2 border-blue-300" />
+                  <div className="text-right text-xs font-semibold text-blue-800">受領印</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[1fr_1.25fr_1.25fr_1.2fr] gap-2">
+                <PayslipColumn
+                  title="勤怠"
+                  rows={[
+                    ["出勤日数", "0.00"],
+                    ["実働時間", "0.00"],
+                    ["残業時間", "0.00"],
+                    ["遅刻早退回数", "0"],
+                    ["有給回数", "0"],
+                    ["遅刻早退時間", "0.00"]
+                  ]}
+                  totalLabel="税額表"
+                  totalValue="-"
+                />
+                <PayslipColumn
+                  title="支給"
+                  rows={[
+                    ["売買売上合計", yen.format(salary?.brokerage_sales_total ?? 0)],
+                    ["賃貸売上合計", yen.format(salary?.ad_sales_total ?? 0)],
+                    ["売買歩合", yen.format(salary?.brokerage_commission ?? 0)],
+                    ["賃貸歩合", yen.format(salary?.ad_commission ?? 0)],
+                    ["その他収入歩合", yen.format(salary?.other_income_commission ?? 0)],
+                    ["その他支給", yen.format(salary?.other_payment ?? 0)],
+                    ["先月残り金額", yen.format(salary?.previous_remaining_amount ?? 0)]
+                  ]}
+                  totalLabel="合計"
+                  totalValue={yen.format(salary?.total_amount ?? 0)}
+                />
+                <PayslipColumn
+                  title="控除"
+                  rows={[
+                    ["社会保険", yen.format(salary?.social_insurance ?? 0)],
+                    ["年金料", yen.format(salary?.pension ?? 0)],
+                    ["雇用保険料", yen.format(salary?.employment_insurance ?? 0)],
+                    ["所得税", yen.format(salary?.income_tax ?? 0)],
+                    ["定期券", yen.format(salary?.commuter_pass ?? 0)],
+                    ["成約交通費", yen.format(salary?.contract_transportation ?? 0)],
+                    ["IT", yen.format(salary?.it_cost ?? 0)],
+                    ["物件管理費用", yen.format(salary?.property_management_cost ?? 0)],
+                    ["経費領収書", yen.format(salary?.expense_receipts ?? 0)],
+                    ["その他控除", yen.format(salary?.other_deduction ?? 0)]
+                  ]}
+                  totalLabel="合計"
+                  totalValue={yen.format(
+                    (salary?.social_insurance ?? 0) +
+                      (salary?.pension ?? 0) +
+                      (salary?.employment_insurance ?? 0) +
+                      (salary?.income_tax ?? 0) +
+                      (salary?.commuter_pass ?? 0) +
+                      (salary?.contract_transportation ?? 0) +
+                      (salary?.it_cost ?? 0) +
+                      (salary?.property_management_cost ?? 0) +
+                      (salary?.expense_receipts ?? 0) +
+                      (salary?.other_deduction ?? 0)
+                  )}
+                />
+                <PayslipColumn
+                  title="その他"
+                  rows={[
+                    ["その他収入合計", yen.format(salary?.other_income_total ?? 0)],
+                    ["差引支給額", yen.format(salary?.transfer_amount ?? 0)],
+                    ["振込支給額", yen.format(salary?.actual_transfer_amount ?? salary?.transfer_amount ?? 0)],
+                    ["残り金額", yen.format(salary?.remaining_amount ?? 0)]
+                  ]}
+                  totalLabel="状態"
+                  totalValue={currentSalary?.status ?? "未作成"}
+                  totalValueNode={salary ? <SalaryBadge status={salary.status} /> : undefined}
+                />
+              </div>
+
+              <div className="mt-2 rounded-md border-2 border-blue-300 px-3 py-3 text-sm">
+                今月もお疲れさまでした。
+              </div>
+            </div>
           </section>
         </form>
       ) : null}
+    </div>
+  );
+}
+
+function PayslipColumn({
+  title,
+  rows,
+  totalLabel,
+  totalValue,
+  totalValueNode
+}: {
+  title: string;
+  rows: [string, string][];
+  totalLabel: string;
+  totalValue: string;
+  totalValueNode?: ReactNode;
+}) {
+  return (
+    <div className="grid min-h-[360px] grid-rows-[auto_1fr_auto] overflow-hidden rounded-md border-2 border-blue-400">
+      <div className="border-b-2 border-blue-400 bg-blue-50 py-1 text-center font-bold tracking-[0.2em] text-blue-800">{title}</div>
+      <div className="grid grid-cols-[1fr_96px]">
+        <div className="bg-blue-50/70 p-2">
+          {rows.map(([label]) => (
+            <div key={label} className="leading-6">{label}</div>
+          ))}
+        </div>
+        <div className="border-l border-blue-300 bg-white p-2 text-right">
+          {rows.map(([label, value]) => (
+            <div key={label} className="whitespace-nowrap leading-6">{value}</div>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-[1fr_96px] border-t-2 border-blue-400 font-bold">
+        <div className="bg-blue-50 px-2 py-1 text-blue-800">{totalLabel}</div>
+        <div className="border-l border-blue-300 px-2 py-1 text-right">{totalValueNode ?? totalValue}</div>
+      </div>
     </div>
   );
 }
