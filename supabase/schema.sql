@@ -240,16 +240,16 @@ begin
       p.id,
       p.microsoft_id,
       p.avatar_url,
-      p.name,
-      p.email,
+      coalesce(nullif(p.name, ''), '未登録社員'),
+      coalesce(nullif(p.email, ''), p.id::text || '@legacy.employee.local'),
       p.password_hash,
-      p.role,
-      p.brokerage_commission_rate,
-      p.ad_commission_rate,
-      p.is_active,
+      case when p.role in ('admin', 'manager', 'staff') then p.role else 'staff' end,
+      coalesce(p.brokerage_commission_rate, 0),
+      coalesce(p.ad_commission_rate, 0),
+      coalesce(p.is_active, true),
       p.last_login_at,
-      p.created_at,
-      p.updated_at
+      coalesce(p.created_at, now()),
+      coalesce(p.updated_at, now())
     from profiles p
     where p.id in (
       select staff_id from contracts where staff_id is not null
